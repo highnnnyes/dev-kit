@@ -1,0 +1,8 @@
+{
+  "name": "dev-kit",
+  "version": "1.0.0",
+  "description": "Plan-driven autonomous dev loop: /write-plan decomposes designs into 2-5min tasks (PLAN.md), /execute-plan runs builder(fresh context) -> reviewer(read-only, independent verdict) per task with PROGRESS.md + per-task git commit logging.",
+  "author": { "name": "Hi" },
+  "keywords": ["workflow", "plan", "review", "verification", "subagent"],
+  "license": "MIT"
+}
