@@ -18,6 +18,8 @@
    ↓
 [자동 라우팅 — dev/CLAUDE.md]         ← 커맨드 없이도 요청을 분류해 절차 시작
    ↓
+(요구사항 모호 시) brainstorming ──→ DESIGN.md   ← 질문으로 설계 확정
+   ↓        (대형/고위험 시) grill: 설계/계획 심문
 /write-plan ──→ PLAN.md               ← stage → 2~5분 태스크, role 태그, [P]병렬 그룹
    ↓ (DECISIONS 없으면 대기 없이)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함)
@@ -46,6 +48,8 @@
 | `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, 병렬 디스패치, 리뷰 루프, 기록 |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현. 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
 | `agents/reviewer.md` | 읽기 전용 검증자. diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, PASS 시 다음 태스크 브리핑(NEXT TASK) 생성 |
+| `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
+| `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `CLAUDE.md.template` | **개발 헌법** (플러그인 외부 배치 필수 — 아래 설치 참조). 자동 라우팅, Karpathy 원칙, 책임 규정, 안전 가드레일 |
 
 ---
@@ -94,6 +98,8 @@ Claude Code 구조상 상시 규칙은 CLAUDE.md로만 주입된다.
 
 | 분류 | 조건 | 동작 |
 |---|---|---|
+| 설계 필요 | 설계 문서 없음, 아이디어 수준 | brainstorming: 질문 → DESIGN.md → 계획으로 |
+| 심문 필요 | 대형/고위험 (마이그레이션, 결제·인증 등) | grill: 설계/계획 압박 검증 후 진행 |
 | 계획 필요 | 여러 파일, 새 모듈, 설계 판단 | PLAN.md 생성 → 전체 출력 → 즉시 실행 |
 | 진행 계속 | PLAN.md에 미완료 태스크 + "진행해" 류 | 미완료 지점부터 자동 재개 |
 | 사소한 작업 | 한 파일, 자명한 수정 | 계획 없이 처리 + 리뷰만 |
@@ -272,6 +278,20 @@ skills/
 
 ⚠️ 사업 민감 정보(수익화 전략, 채널 데이터 등)는 public 리포에 넣지 말 것.
 필요 시 리포를 private으로 전환 — private이어도 인증된 기기에선 설치 가능.
+
+---
+
+## 로드맵 — 추가 후보 (skills/로 확장)
+
+우선순위 순. 각각 `skills/_template/` 구조로 추가하면 된다.
+
+1. **design** — 하이 취향의 디자인 기준(색·타이포·레이아웃·컴포넌트 관례).
+   Anthropic 공식 frontend-design(범용 anti-slop)과 역할 분담: 공식 것은
+   "AI 티 안 나게", 이건 "내 제품답게". 계산기·SaaS 등 UI 제품이 늘수록 가치 상승.
+2. **docs** — Ship 단계의 문서화 체크리스트: README 갱신, CHANGELOG,
+   사용자용 안내문. "코드는 됐는데 문서가 안 따라오는" 문제 방지.
+3. **youtube-automation / blog-automation** — 해당 프로젝트를 실전 진행하며
+   검증된 절차가 생기면 그때 스킬로 승격 (검증 전 지식은 넣지 않는다).
 
 ---
 
