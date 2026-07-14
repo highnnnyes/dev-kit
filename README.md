@@ -57,33 +57,61 @@
 
 ## 설치
 
-### 1. 플러그인
+Claude Code 플러그인은 **2단계**다 — 마켓플레이스 등록(카탈로그 추가) 후
+플러그인 설치. 이 리포는 자기 자신을 마켓플레이스로 등록하는
+`.claude-plugin/marketplace.json`을 포함한다.
+
+### 1. 리포 클론 (헌법 파일을 꺼내오기 위해 필요)
 
 ```bash
-# GitHub에 올린 경우 (권장 — 업데이트·다기기 동기화 용이)
-/plugin install https://github.com/<username>/dev-kit
-
-# 또는 로컬 테스트
-claude --plugin-dir /path/to/dev-kit
+git clone https://github.com/<username>/dev-kit.git ~/dev/dev-kit
 ```
+
+이미 클론돼 있으면 `cd ~/dev/dev-kit && git pull`로 최신화.
 
 ### 2. 헌법 배치 (필수)
 
 ```bash
-cp CLAUDE.md.template ~/dev/CLAUDE.md   # 모든 프로젝트의 공통 상위 폴더
+cp ~/dev/dev-kit/CLAUDE.md.template ~/dev/CLAUDE.md   # 모든 프로젝트의 공통 상위 폴더
 ```
 
 **이 파일이 없으면**: 커맨드(`/dev-kit:write-plan` 등)는 작동하지만
 자동 라우팅이 없어서 매번 수동으로 커맨드를 쳐야 하고, Karpathy 원칙·
 가드레일도 적용되지 않는다. 플러그인은 "도구", CLAUDE.md는 "상시 규칙"이며
 Claude Code 구조상 상시 규칙은 CLAUDE.md로만 주입된다.
+헌법은 플러그인에 포함할 수 없어(상시 규칙 vs 온디맨드 로드) 기기마다 수동 배치가 필요하다.
 
-### 3. 확인
+### 3. 마켓플레이스 등록 + 플러그인 설치 (Claude Code 안에서)
 
 ```
-/plugin           → dev-kit 표시 확인
-/agents           → builder, reviewer 표시 확인
+/plugin marketplace add <username>/dev-kit
+/plugin install dev-kit@dev-kit
 ```
+
+설치 후 **Claude Code를 재시작**해야 에이전트/커맨드가 로드된다.
+설치 시 스코프는 **user scope**(모든 프로젝트에서 사용)를 선택한다 —
+project/local scope는 이 리포에서만 활성화되므로 전역 방법론 용도에 안 맞다.
+
+> ⚠️ **스키마 에러가 나면**: `/plugin install` 시
+> `Invalid schema: .../anthropics-claude-plugins-official/... plugins.N.source: Invalid input`
+> 같은 에러가 뜰 수 있다. 이건 dev-kit이 아니라 **Anthropic 공식 마켓플레이스**의
+> 새 source 타입(`git-subdir`)을 구버전 Claude Code가 인식 못 해서 나는
+> 알려진 버그다. 해결: 먼저 `claude update`로 최신 버전으로 올린다.
+> 그래도 안 되면 `/plugin marketplace remove anthropics-claude-plugins-official`
+> 후 설치하고, 나중에 다시 add한다 (dev-kit 사용에는 지장 없음).
+
+### 4. 확인
+
+```
+/plugin           → Installed 탭에 dev-kit enabled
+/agents           → dev-kit:builder, dev-kit:reviewer 표시
+```
+
+### 새 기기 추가 요약
+
+기기마다: **① 클론 + 헌법 복사(1·2단계) → ② 마켓플레이스 등록 + 설치(3단계)**.
+헌법(CLAUDE.md)은 상위 폴더에 하나만 두면 하위 모든 프로젝트가 자동 상속하므로,
+프로젝트마다 복사할 필요는 없다. 세션은 항상 프로젝트 폴더 안에서 켠다.
 
 ---
 
@@ -302,8 +330,17 @@ skills/
 
 ## 업데이트
 
-파일 수정 → `plugin.json`의 version 올림 → push → `/plugin update dev-kit`.
-(version을 안 올리면 캐시 때문에 변경이 반영되지 않을 수 있다.)
+리포 수정 → `plugin.json`의 version 올림 → push. 각 기기에서:
+
+```
+/plugin marketplace update dev-kit   # 카탈로그(로컬 클론) 갱신 — 이걸 빼먹으면 "not found"
+/plugin update dev-kit               # 플러그인 갱신
+```
+
+마켓플레이스는 로컬 git 클론이라 `install`/`update`가 자동으로 원격을
+당겨오지 않는다. version을 안 올리거나 marketplace update를 건너뛰면
+캐시 때문에 변경이 반영되지 않는다. 헌법(CLAUDE.md)이 바뀐 경우
+`cp ~/dev/dev-kit/CLAUDE.md.template ~/dev/CLAUDE.md`로 재배치도 필요하다.
 
 ## 라이선스
 
