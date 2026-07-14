@@ -1,0 +1,11 @@
+{
+  "name": "dev-kit",
+  "owner": { "name": "High" },
+  "plugins": [
+    {
+      "name": "dev-kit",
+      "source": "./",
+      "description": "Plan-driven autonomous dev loop: write-plan/execute-plan + builder/reviewer + brainstorming/grill/docs skills."
+    }
+  ]
+}
