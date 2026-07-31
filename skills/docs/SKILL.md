@@ -1,6 +1,6 @@
 ---
 name: docs
-description: 개발자용 기술 문서(아키텍처 문서, API/인터페이스 명세, 데이터 모델, 설계 결정 기록 ADR, 개발 환경 셋업)를 작성·갱신·검증한다. 사용자가 "개발문서", "아키텍처 문서", "API 명세", "ERD", "기술 문서" 작성을 요청할 때, 코드 구조가 바뀌어 기존 문서가 낡았을 때, 새 개발자(사람 또는 에이전트)가 프로젝트 파악에 필요한 문서가 없을 때 반드시 이 스킬을 사용한다. execute-plan 루프에서 구조 변경이 있는 stage 완료 시 자동 호출 대상.
+description: 개발자용 기술 문서(아키텍처 문서, API/인터페이스 명세, 데이터 모델, 설계 결정 기록 ADR, 개발 환경 셋업)를 작성·갱신·검증한다. 사용자가 "개발문서", "아키텍처 문서", "API 명세", "ERD", "기술 문서" 작성을 요청할 때, 코드 구조가 바뀌어 기존 문서가 낡았을 때, 새 개발자(사람 또는 에이전트)가 프로젝트 파악에 필요한 문서가 없을 때 반드시 이 스킬을 사용한다. 루프 안에서는 write-plan이 구조 변경 stage 말미에 심는 role: docs 태스크로 실행된다.
 ---
 
 # docs — 개발자용 기술 문서 스킬
@@ -45,9 +45,13 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 ### 1. 현황 파악
 - 문서 4종의 유무와 마지막 갱신 시점 확인 (git log)
 - **drift 스캔**: 문서의 주장 vs 코드의 실제
-  - ARCHITECTURE.md의 모듈 목록·의존 방향 vs 실제 import 그래프
-  - api.md의 엔드포인트/시그니처 vs 실제 라우트·타입 정의
-  - data-model.md의 스키마 vs 실제 마이그레이션/모델 파일
+
+  | 문서 | 검사 항목 | 대조 대상 |
+  |---|---|---|
+  | ARCHITECTURE.md | 모듈 목록·의존 방향 | 실제 import 그래프 |
+  | api.md | 엔드포인트/시그니처 | 실제 라우트·타입 정의 |
+  | data-model.md | 스키마 | 실제 마이그레이션/모델 파일 |
+  | 프로젝트 CLAUDE.md | 4KB 초과, 또는 진행 상황·Phase 기술이 실제와 불일치, 또는 '넣지 않을 것' 목록 위반 (헌법 §6 규율) | PLAN.md, 실제 코드 |
 - drift 발견 → 신규 작성보다 갱신이 항상 우선
 
 ### 2. 프로젝트 크기별 스코프
@@ -77,10 +81,10 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 1. **write-plan**: 계획에 구조 변경(새 모듈, 인터페이스 변경, 스키마
    변경)이 포함되면 해당 stage 마지막에 문서 태스크 자동 추가:
    ```markdown
-   - [ ] N.x ARCHITECTURE.md 갱신 · role: docs · verify: drift 스캔 통과
+   - [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · verify: drift 스캔 통과
    ```
    구조 변경 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉.
-2. **DECISIONS → ADR 파이프**: write-plan의 DECISIONS에서 하이가
+2. **DECISIONS → ADR 파이프**: write-plan의 DECISIONS에서 사용자가
    결정을 내리면, 그 결정+근거를 `docs/decisions/`에 ADR로 자동 기록.
    결정의 맥락이 채팅에서 증발하는 걸 막는다.
 3. **builder 브리핑**: 오케스트레이터는 builder 투입 시 ARCHITECTURE.md
@@ -91,5 +95,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 - write-plan에 구조 변경 stage 존재 → 문서 태스크 자동 포함
 - DECISIONS 결정 확정 → ADR 자동 기록
 - "문서 검사해줘" → drift 스캔만, 수정은 보고 후
+- 프로젝트 CLAUDE.md가 4KB를 초과했을 때 → 헌법 §6 규율로 정리
+  ("넣지 않을 것"은 참조 한 줄로 대체)
 - 새 프로젝트 첫 구조 확정 (brainstorming의 DESIGN.md 승인 직후) →
   ARCHITECTURE.md 초판 생성

@@ -24,11 +24,16 @@
    ↓ (DECISIONS 없으면 대기 없이)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함)
    │
-   │  태스크마다:
-   ├─→ builder (신선한 컨텍스트 + role 페르소나 주입) — 구현
-   ├─→ reviewer (읽기 전용, 독립 컨텍스트) — PASS/FAIL 판정
+   │  태스크마다: (착수 전 .dev-kit-pause 확인 — 있으면 태스크 경계에서 안전 정지)
+   ├─→ tier 라우팅: standard → builder(sonnet) / light → builder-light(haiku)
+   │     (신선한 컨텍스트 + role 페르소나 주입, light BLOCKED 시 builder로 1회 승급)
+   ├─→ reviewer (opus, 읽기 전용, 독립 컨텍스트) — PASS/FAIL 판정
    ├─→ PLAN.md 체크 + PROGRESS.md 기록 + git 커밋
    └─→ NEXT TASK로 다음 태스크 (반복)
+   │
+   │  stage 완료 시:
+   └─→ stage-reviewer (fable, 읽기 전용) — 태스크 간 일관성·통합 동작·
+        stage 완료 조건 판정. FAIL 시 보완 태스크 추가 후 1회 재검증
    ↓
 완료/중단 보고
 ```
@@ -44,10 +49,12 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role 필수, 아키텍처 결정은 DECISIONS로 분리 |
-| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, 병렬 디스패치, 리뷰 루프, 기록 |
-| `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현. 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
-| `agents/reviewer.md` | 읽기 전용 검증자. diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, PASS 시 다음 태스크 브리핑(NEXT TASK) 생성 |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier 필수, 아키텍처 결정은 DECISIONS로 분리 |
+| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치, 리뷰 루프, stage 경계 통합 검증, 일시정지, 기록 |
+| `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
+| `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
+| `agents/reviewer.md` | 읽기 전용 검증자 (opus). diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/[P그룹] 포함) 생성 |
+| `agents/stage-reviewer.md` | stage 통합 검증자 (fable, 읽기 전용). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
 | `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
@@ -72,8 +79,11 @@ git clone https://github.com/<username>/dev-kit.git ~/dev/dev-kit
 ### 2. 헌법 배치 (필수)
 
 ```bash
-cp ~/dev/dev-kit/CLAUDE.md.template ~/dev/CLAUDE.md   # 모든 프로젝트의 공통 상위 폴더
+ln -s ~/dev/dev-kit/CLAUDE.md.template ~/dev/CLAUDE.md   # 모든 프로젝트의 공통 상위 폴더
 ```
+
+심볼릭 링크이므로 이후 `git pull`만으로 헌법 변경이 즉시 반영된다.
+(기존에 `cp`로 배치했다면 `rm ~/dev/CLAUDE.md` 후 위 명령으로 교체.)
 
 **이 파일이 없으면**: 커맨드(`/dev-kit:write-plan` 등)는 작동하지만
 자동 라우팅이 없어서 매번 수동으로 커맨드를 쳐야 하고, Karpathy 원칙·
@@ -104,7 +114,8 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 
 ```
 /plugin           → Installed 탭에 dev-kit enabled
-/agents           → dev-kit:builder, dev-kit:reviewer 표시
+/agents           → dev-kit:builder, dev-kit:builder-light,
+                    dev-kit:reviewer, dev-kit:stage-reviewer 표시
 ```
 
 ### 새 기기 추가 요약
@@ -141,8 +152,11 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 1. **DECISIONS** — 계획에 아키텍처 결정이 필요하면 실행 전에 물어보고 대기
 2. **3회 연속 FAIL** — 같은 태스크가 리뷰를 3번 통과 못 하면 중단·보고
 3. **BLOCKED** — builder가 전제 붕괴를 발견하면 (파일 없음, 스펙 모순 등)
-4. **파괴적 작업** — rm -rf, DROP TABLE, force-push, 프로덕션 배포 등은 항상 확인
-5. **사용자 중단 지시**
+4. **파괴적 작업·요구사항 불명** — rm -rf, DROP TABLE, force-push, 프로덕션
+   배포 등은 항상 확인. 다음 태스크의 요구사항이 불명확할 때도 멈춘다
+5. **stage-reviewer 2회 연속 FAIL** — stage 통합 검증이 보완 후 재검증에도 실패하면 중단·보고
+6. **일시정지** — `.dev-kit-pause` 파일 존재 시 태스크 경계에서 안전 정지 (아래 참조)
+7. **사용자 중단 지시**
 
 ### 실행 중 개입
 
@@ -154,6 +168,19 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 ```
 
 PLAN.md를 갱신하고 이어간다. 승인 게이트 없이도 계획 교정이 가능한 구조.
+
+### 일시정지 (`.dev-kit-pause`)
+
+루프가 도는 동안 다른 터미널에서:
+
+```bash
+touch .dev-kit-pause   # 태스크 경계에서 안전 정지 (커밋 직후 상태)
+rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
+```
+
+진행 중인 태스크는 끝까지 완료·커밋된 후 멈추므로 작업 트리가 항상 깨끗하다.
+즉시 정지가 필요하면 Esc — 단, 미완성 파일이 남을 수 있으니 `git status`
+확인을 권장한다.
 
 ### 수동 커맨드 (자동 라우팅 오버라이드)
 
@@ -177,16 +204,21 @@ PLAN.md를 갱신하고 이어간다. 승인 게이트 없이도 계획 교정�
 - [ ] D1: PDF 라이브러리 — puppeteer(정확한 렌더링, 무거움) vs pdfkit(가벼움, 레이아웃 수동)
 
 ## Stage 1: 데이터 준비 — 완료 조건: export API가 JSON 반환
-- [ ] 1.1 export 서비스 골격 · 파일: `services/export.ts` (신규) · role: backend · verify: 유닛테스트 통과
-- [ ] 1.2 [P1] 템플릿 컴포넌트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · verify: 스토리북 렌더 확인
-- [ ] 1.3 [P1] 테스트 픽스처 · 파일: `tests/fixtures/report.ts` (신규) · role: test · verify: import 에러 없음
+- [ ] 1.1 export 서비스 골격 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · verify: 유닛테스트 통과
+- [ ] 1.2 [P1] 템플릿 컴포넌트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · verify: 스토리북 렌더 확인
+- [ ] 1.3 [P1] 테스트 픽스처 · 파일: `tests/fixtures/report.ts` (신규) · role: test · tier: light · verify: import 에러 없음
 ```
 
 - **role 태그**: 실행 시 builder에게 해당 전문가 페르소나가 주입된다
   (frontend/backend/db/test/infra/docs/general). 별도 에이전트 파일 불필요 —
   오케스트레이터가 태스크에 맞는 역할 지침을 브리핑에 즉석 작성한다.
+- **tier 태그**: `light`(보일러플레이트·설정·픽스처·단순 CRUD — 판단 불필요)는
+  builder-light(haiku), `standard`(그 외 전부)는 builder(sonnet)로 라우팅된다.
+  판단이 조금이라도 들어가면 standard, 애매해도 standard — 잘못된 light는
+  재시도 비용으로 절감분을 까먹는다. light가 BLOCKED되면 builder로 1회 승급.
 - **[P그룹]**: 같은 번호끼리 병렬 실행. 조건: 상호 의존 없음 + 파일 안 겹침.
-  동시 최대 3개 (토큰 소모가 병렬 수에 비례). 리뷰는 그룹 완료 후 순차.
+  동시 최대 3개 (토큰 소모가 병렬 수에 비례). 리뷰는 그룹 완료 후 순차,
+  그룹 내 리뷰에서는 NEXT TASK 생략(마지막 리뷰만 포함).
 
 ---
 
@@ -201,6 +233,22 @@ PLAN.md를 갱신하고 이어간다. 승인 게이트 없이도 계획 교정�
 | raw 트랜스크립트 | `~/.claude/projects/` (Claude Code 자동) | 브리핑/verdict 원문 디버깅용 |
 
 ---
+
+## 모델 티어링
+
+판단 밀도에 맞춰 역할별로 모델을 배치한다:
+
+| 역할 | 모델 | 근거 |
+|---|---|---|
+| 설계 (brainstorming / grill / write-plan — 메인 세션) | fable 권장 | 계획 품질이 루프 전체를 결정 — 여기 아끼면 뒤에서 다 낸다 |
+| 실행 루프 오케스트레이션 (메인 세션) | `/model opus`로 낮추기 권장 | 상태 관리·브리핑 작성 위주, 최고 티어 불필요 |
+| stage-reviewer | fable (frontmatter 고정) | stage 통합 판정 — 가장 넓은 시야가 필요 |
+| reviewer | opus (frontmatter 고정) | 독립 검증 verdict |
+| builder | sonnet (frontmatter 고정) | 태스크 단위 구현 |
+| builder-light | haiku (frontmatter 고정) | 판단 없는 기계적 작업 |
+
+> ⚠️ `CLAUDE_CODE_SUBAGENT_MODEL` 환경변수가 설정돼 있으면 에이전트
+> frontmatter의 model을 전부 덮어써 티어링이 무력화된다. 설정하지 마라.
 
 ## 토큰 관리
 
@@ -223,7 +271,7 @@ PLAN.md를 갱신하고 이어간다. 승인 게이트 없이도 계획 교정�
   NON-BLOCKING" 기준을 조정하라.
 - **특정 프로젝트만 계획 승인 후 실행하고 싶음** → 그 프로젝트의 CLAUDE.md에
   "이 프로젝트는 계획 승인 후 실행" 한 줄 추가 (하위가 상위를 덮어씀).
-- **에이전트가 만든 계획이 의도와 자주 어긋남** → dev/CLAUDE.md 라우팅 2번에서
+- **에이전트가 만든 계획이 의도와 자주 어긋남** → dev/CLAUDE.md 라우팅 3번에서
   "확인 대기 없이"를 "요약 확인 후"로 바꾸면 승인 게이트 1개가 생긴다.
 
 ## 환경별 세팅 & 함정
@@ -339,8 +387,8 @@ skills/
 
 마켓플레이스는 로컬 git 클론이라 `install`/`update`가 자동으로 원격을
 당겨오지 않는다. version을 안 올리거나 marketplace update를 건너뛰면
-캐시 때문에 변경이 반영되지 않는다. 헌법(CLAUDE.md)이 바뀐 경우
-`cp ~/dev/dev-kit/CLAUDE.md.template ~/dev/CLAUDE.md`로 재배치도 필요하다.
+캐시 때문에 변경이 반영되지 않는다. 헌법(CLAUDE.md.template)은 심볼릭
+링크로 배치돼 있으므로 `git pull`만으로 즉시 반영된다 — 별도 재배치 불필요.
 
 ## 라이선스
 

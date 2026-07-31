@@ -16,6 +16,10 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    - **role 태그**: 이 태스크에 맞는 전문 역할 하나 — 예: `frontend`, `backend`,
      `db`, `test`, `infra`, `docs`. 실행 시 builder에게 해당 전문가 페르소나가
      주입된다. 애매하면 `general`.
+   - **tier 태그**: `light`(보일러플레이트·설정·픽스처·단순 CRUD — 판단
+     불필요) 또는 `standard`(그 외 전부). 판단이 조금이라도 들어가면
+     standard. 애매하면 standard — 잘못된 light는 재시도 비용으로 절감분을
+     까먹는다. 실행 시 light는 builder-light로 라우팅된다.
    를 가진다. "구현한다" 같은 모호한 태스크 금지 — verify가 안 떠오르면 태스크가 너무 크다는 뜻이니 더 쪼개라.
 4. 태스크 간 의존 관계가 있으면 순서로 표현한다. **서로 의존이 없고 파일이
    겹치지 않는 태스크들은 [P] 그룹으로 묶어라** — 같은 그룹은 병렬 실행된다.
@@ -24,7 +28,7 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    분리해서 맨 위에 모아라 — 이건 사용자가 결정한다 (§1 Think Before Coding).
 6. **문서 태스크**: 계획에 구조 변경(새 모듈, 인터페이스 변경, 스키마 변경)이
    포함되면 해당 stage 마지막에 문서 태스크를 추가하라 (docs 스킬 기준 적용):
-   `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · verify: 문서-코드 drift 스캔 통과`
+   `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · verify: 문서-코드 drift 스캔 통과`
    구조 변경이 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉이다.
 
 ## PLAN.md 형식
@@ -36,14 +40,16 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 - [ ] D1: [결정 사항 + 선택지 + 트레이드오프]
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
-- [ ] 1.1 [목표 한 문장] · 파일: `path/to/file` · role: backend · verify: [방법]
-- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · verify: [방법]
-- [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · verify: [방법]
+- [ ] 1.1 [목표 한 문장] · 파일: `path/to/file` · role: backend · tier: standard · verify: [방법]
+- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · verify: [방법]
+- [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · verify: [방법]
 
 ## Stage 2: ...
 ```
 
 ## 작성 후
 - DECISIONS가 있으면 계획 실행 전에 사용자에게 결정을 요청하고 멈춰라.
-- 없으면 PLAN.md 요약(단계 수, 태스크 수, 예상 리뷰 포인트)을 보여주고
-  "/execute-plan으로 실행 가능"을 안내하라. 자동으로 실행하지는 마라.
+- 없으면 PLAN.md 요약(단계 수, 태스크 수, 예상 리뷰 포인트)을 보여준다.
+  수동 /write-plan 커맨드로 호출된 경우에만 여기서 멈추고
+  "/execute-plan으로 실행 가능"을 안내한다. 자동 라우팅(헌법 §4) 경유
+  시에는 DECISIONS가 없으면 즉시 /execute-plan 절차로 이어간다.

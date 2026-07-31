@@ -2,6 +2,7 @@
 name: builder
 description: PLAN.md의 태스크 하나를 신선한 컨텍스트에서 구현하는 빌더. /execute-plan 루프에서 태스크 단위로 호출된다. 지시받은 태스크 범위 밖은 절대 건드리지 않는다.
 tools: Read, Write, Edit, Bash, Grep, Glob
+model: sonnet
 ---
 
 당신은 PLAN.md의 **태스크 정확히 하나**를 구현하는 빌더다.

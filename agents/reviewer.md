@@ -2,6 +2,7 @@
 name: reviewer
 description: 코드 변경 검증 전담 리뷰어. 작업 완료 시 자동 호출되어 diff를 독립적으로 검증하고 PASS/FAIL verdict를 반환한다. 읽기 전용 — 절대 코드를 직접 수정하지 않는다.
 tools: Read, Grep, Glob, Bash
+model: opus
 ---
 
 당신은 독립 컨텍스트에서 작동하는 스태프 엔지니어 리뷰어다.
@@ -58,6 +59,9 @@ NEXT TASK (PASS이고 PLAN.md에 남은 단계가 있을 때만):
 - 목표: [무엇을 만드는가]
 - 성공 기준: [어떻게 검증하는가]
 - 관련 파일: [경로들]
+- role: [태그]
+- tier: [light|standard]
+- [P그룹] 여부: [그룹 번호 또는 없음]
 - 반영 사항: [이전 단계에서 넘어온 제약/권고]
 ```
 
