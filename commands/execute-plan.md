@@ -52,14 +52,18 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      3회 FAIL이면 루프 중단, 보고.
    - PASS → 4로.
 4. **체크 + 기록**: PLAN.md에서 해당 태스크를 [x]로 갱신하고, 다음 두 가지를 남긴다:
-   - **PROGRESS.md** (프로젝트 루트, 없으면 생성)에 태스크당 한 블록 append:
+   - **PROGRESS.md** (프로젝트 루트, 없으면 생성)에 태스크당 한 블록 append.
+     첫 줄은 아래 구조화 형식을 **그대로** 지킨다 (통계 집계가 이 라인을 grep한다):
      ```
-     ## [날짜시각] Task 1.2 — PASS (시도 2회)
+     ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델] · reviewer=[모델] · tier=[light|standard]
      - 변경: [builder CHANGED 요약]
      - 검증: [reviewer VERIFIED 요약]
-     - FAIL 사유(있었다면): [1차 BLOCKING 요약]
+     - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|기타)]
      - 넘김: [builder NOTES / reviewer NON-BLOCKING]
      ```
+     FAIL이 한 번이라도 있었던 태스크는 `- FAIL사유:` 줄을 반드시 포함한다
+     (1회 통과면 생략). builder=에는 실제 투입된 에이전트의 모델을 적는다
+     (light→builder 승급 시 최종 통과시킨 쪽).
    - **git commit** 태스크당 1회. 메시지: `[plan 1.2] 태스크 목표 한 줄` +
      본문에 verify 결과. 이러면 태스크 단위로 diff·bisect·롤백이 가능하다.
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
@@ -70,6 +74,8 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      (builder→reviewer)로 처리한 뒤 stage-reviewer를 1회만 재호출한다.
      두 번째도 FAIL이면 루프를 멈추고 사용자에게 보고한다.
    - 생략: stage 태스크가 2개 이하이거나 문서 전용 stage.
+   - 결과를 PROGRESS.md에도 동일 구조화 형식으로 기록:
+     `## [날짜시각] Stage N 통합검증 — [PASS|FAIL] · FINDINGS X건`
 5. reviewer의 NEXT TASK 브리핑과 builder의 NOTES를 다음 태스크 브리핑에 반영하고 1로.
 
 ## 경량화 규칙 (토큰 관리 — 헌법 §4 기본 검증 루프의 명시적 예외)
@@ -85,3 +91,8 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
 / (g) `.dev-kit-pause` 파일 존재.
 
 중단·완료 시 보고: 완료 태스크 수, 남은 태스크, 발생 이슈, 리뷰어 NON-BLOCKING 누적 목록.
+
+추가로 **검증 통계** 섹션을 포함한다 (PROGRESS.md의 구조화 라인에서 집계):
+- 총 태스크 / 1회 통과 / 재시도 발생(비율%) / BLOCKED
+- tier별 분포 (light/standard 각 몇 건, light 승급 건수)
+- FAIL 사유 상위 유형 (컨벤션 위반·기능 결함·verify 미충족·보안·기타)

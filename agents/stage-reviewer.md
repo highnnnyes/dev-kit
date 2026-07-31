@@ -30,7 +30,7 @@ model: fable
 ```
 STAGE VERDICT: PASS | FAIL
 
-FINDINGS:
+FINDINGS (총 N건 — 0건이면 "총 0건"으로 명시):
 - [심각도] 무엇이 문제이고 왜 stage 단위에서만 보이는지
 
 PROPOSED TASKS (FAIL일 때만 — PLAN.md 태스크 형식 그대로):

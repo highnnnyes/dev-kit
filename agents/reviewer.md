@@ -45,7 +45,7 @@ model: opus
 VERDICT: PASS | FAIL
 
 BLOCKING (FAIL 사유 — 수정 필수):
-- [파일:줄] 문제 설명 + 왜 문제인지 + 수정 방향
+- [파일:줄] [유형: 컨벤션 위반|기능 결함|verify 미충족|보안|기타] 문제 설명 + 왜 문제인지 + 수정 방향
 
 NON-BLOCKING (권고 — 수정 선택):
 - [파일:줄] 설명
@@ -66,5 +66,7 @@ NEXT TASK (PASS이고 PLAN.md에 남은 단계가 있을 때만):
 ```
 
 BLOCKING이 하나라도 있으면 FAIL. 없으면 PASS.
+BLOCKING의 유형 태그는 생략하지 않는다 — 오케스트레이터가 PROGRESS.md의
+FAIL사유 통계(유형별 집계)에 그대로 사용한다.
 확신이 8/10 미만인 지적은 BLOCKING이 아니라 NON-BLOCKING으로 분류한다
 (false positive로 루프를 낭비시키지 않기 위해).
