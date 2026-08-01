@@ -1,6 +1,6 @@
 {
   "name": "dev-kit",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Plan-driven autonomous dev loop: /write-plan decomposes designs into 2-5min tasks (PLAN.md), /execute-plan runs tier-routed builders (builder/sonnet, builder-light/haiku) -> reviewer(read-only, independent verdict) per task, plus stage-reviewer integration review at stage boundaries, with PROGRESS.md + per-task git commit logging and file-based pause (.dev-kit-pause). Includes brainstorming/grill/docs skills (design elicitation, plan interrogation, developer docs with drift scan + ADR).",
   "author": {
     "name": "High"

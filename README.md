@@ -32,7 +32,7 @@
    └─→ NEXT TASK로 다음 태스크 (반복)
    │
    │  stage 완료 시:
-   └─→ stage-reviewer (fable, 읽기 전용) — 태스크 간 일관성·통합 동작·
+   └─→ stage-reviewer (기본 opus·위험 stage는 fable 승격, 읽기 전용) — 태스크 간 일관성·통합 동작·
         stage 완료 조건 판정. FAIL 시 보완 태스크 추가 후 1회 재검증
    ↓
 완료/중단 보고
@@ -54,7 +54,7 @@
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
 | `agents/reviewer.md` | 읽기 전용 검증자 (opus). diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/[P그룹] 포함) 생성 |
-| `agents/stage-reviewer.md` | stage 통합 검증자 (fable, 읽기 전용). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
+| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
 | `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
@@ -258,10 +258,16 @@ grep -h "^## .* Task" PROGRESS.md | grep -c "시도 [2-9]회"   # 재시도 발�
 |---|---|---|
 | 설계 (brainstorming / grill / write-plan — 메인 세션) | fable 권장 | 계획 품질이 루프 전체를 결정 — 여기 아끼면 뒤에서 다 낸다 |
 | 실행 루프 오케스트레이션 (메인 세션) | `/model opus`로 낮추기 권장 | 상태 관리·브리핑 작성 위주, 최고 티어 불필요 |
-| stage-reviewer | fable (frontmatter 고정) | stage 통합 판정 — 가장 넓은 시야가 필요 |
+| stage-reviewer | 기본 opus, 조건부 fable 승격 | 통합 판정은 보통 opus로 충분. 승격 조건: 인증·결제·데이터 마이그레이션·외부 연동·되돌리기 어려운 변경 포함 stage, 또는 DECISIONS 항목이 구현된 stage. 승격 사유는 PROGRESS.md에 기록 |
 | reviewer | opus (frontmatter 고정) | 독립 검증 verdict |
 | builder | sonnet (frontmatter 고정) | 태스크 단위 구현 |
 | builder-light | haiku (frontmatter 고정) | 판단 없는 기계적 작업 |
+
+stage-reviewer 조건부 승격의 동작 방식: frontmatter는 `model: fable`로 두고,
+execute-plan이 기본 호출 시 Task 파라미터로 `model: opus`를 명시해 강등한다.
+승격 조건이면 파라미터를 생략해 frontmatter의 fable이 적용된다 (Task 파라미터가
+fable을 직접 못 받는 환경이 있어 강등 방향으로 설계). 파라미터 덮어쓰기가 안 되는
+버전이면 전부 fable로 돌게 되며 — PROGRESS.md의 `model=` 기록으로 확인 가능하다.
 
 > ⚠️ `CLAUDE_CODE_SUBAGENT_MODEL` 환경변수가 설정돼 있으면 에이전트
 > frontmatter의 model을 전부 덮어써 티어링이 무력화된다. 설정하지 마라.

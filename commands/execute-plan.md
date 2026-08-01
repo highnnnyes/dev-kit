@@ -69,13 +69,21 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
    (통합 검증)를 호출한다 — 스코프: stage 시작 커밋..HEAD 통합 diff +
    PLAN.md의 stage 완료 조건 + PROGRESS.md의 해당 stage 기록.
+   - **모델 선택**: 기본은 Task 호출 시 `model: opus`를 **명시**한다
+     (frontmatter의 fable을 강등). 아래 승격 조건 중 하나라도 해당하면
+     model 파라미터를 **생략**해 frontmatter의 fable이 적용되게 한다:
+     - 해당 stage가 인증·결제·데이터 마이그레이션·외부 시스템 연동·
+       되돌리기 어려운 변경을 포함
+     - PLAN.md의 DECISIONS 항목이 그 stage에서 구현됨
    - PASS → stage 완료 처리 후 다음 stage로 진행.
    - FAIL → PROPOSED TASKS를 PLAN.md에 보완 태스크로 추가하고 정상 루프
      (builder→reviewer)로 처리한 뒤 stage-reviewer를 1회만 재호출한다.
      두 번째도 FAIL이면 루프를 멈추고 사용자에게 보고한다.
    - 생략: stage 태스크가 2개 이하이거나 문서 전용 stage.
    - 결과를 PROGRESS.md에도 동일 구조화 형식으로 기록:
-     `## [날짜시각] Stage N 통합검증 — [PASS|FAIL] · FINDINGS X건`
+     `## [날짜시각] Stage N 통합검증 — [PASS|FAIL] · FINDINGS X건 · model=[opus|fable]`
+     model=에는 **실제 투입된 모델**을 적는다. fable 승격 시 다음 줄에
+     `- 승격사유: [해당 승격 조건]`을 추가한다.
 5. reviewer의 NEXT TASK 브리핑과 builder의 NOTES를 다음 태스크 브리핑에 반영하고 1로.
 
 ## 경량화 규칙 (토큰 관리 — 헌법 §4 기본 검증 루프의 명시적 예외)
