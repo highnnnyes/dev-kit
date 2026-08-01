@@ -359,6 +359,36 @@ Pro 플랜이면 [P] 그룹 없이 순차 운용을 기본으로, Max 플랜 이
 켜는 것을 권장한다. 한도 도달로 세션이 끊겨도 PLAN.md/PROGRESS.md 기반으로
 "진행해" 한마디에 재개된다 — 이 재개 가능성이 기록 체계의 존재 이유 중 하나다.
 
+### 모델 라우팅 트러블슈팅 (실측 기반)
+승격/강등 메커니즘 자체는 위 "모델 티어링" 참조. 아래는 증상별 원인과 해결.
+
+- **서브에이전트 호출이 "There's an issue with the selected model (X)"로 즉시 실패**
+  → frontmatter `model:`에 무효 별칭을 쓴 것. `haiku`/`sonnet`/`opus` 별칭만
+  해석되며, 최신 프론티어 모델(fable)은 별칭이 없어 **전체 모델 ID**
+  (`claude-fable-5`)를 써야 한다 (v1.3.3에서 수정된 버그).
+- **별칭이 옛 모델로 풀림** (PROGRESS.md `model=` 기록이 구세대 모델)
+  → 별칭→모델 ID 매핑은 **설치된 Claude Code 빌드에 고정**된다. `claude --version`
+  확인 후 CLI를 업데이트하라 (실측: 2.1.42는 opus→4.6·sonnet→4.5,
+  2.1.220은 opus→5·sonnet→5). dev-kit 에이전트는 별칭 기반이라 CLI만 올리면
+  파일 수정 없이 자동 승격된다 — 전체 ID로 고정한 stage-reviewer만
+  모델 세대 교체 때 수동 갱신 대상이다.
+- **에이전트 frontmatter를 고쳤는데 반영이 안 됨** — 캐시가 두 겹이다:
+  (a) 에이전트 정의는 **세션 시작 시 메모리에 로드**되므로 파일을 고쳐도
+  현재 세션에는 반영되지 않는다 — 새 세션이 필요하다.
+  (b) 플러그인 에이전트는 리포가 아니라 **설치 캐시**
+  (`~/.claude/plugins/cache/<마켓플레이스>/<플러그인>/<버전>/`)에서 로드된다 —
+  리포 수정만으로는 부족하고 plugin update가 필요하다.
+- **라우팅이 의도대로 되는지 검증하는 법**: 해당 서브에이전트를 호출해
+  "시스템 프롬프트의 실행 모델 ID('You are powered by ...' 줄)를 보고하라"고
+  시키면 실제 투입 모델을 실측할 수 있다. 새 세션 검증이 필요하면
+  `claude -p`(헤드리스)로 Task 호출을 시켜서 확인한다.
+- **pnpm 글로벌 설치/업데이트 후 "claude native binary not installed"**
+  → pnpm v10이 postinstall 스크립트를 기본 차단한다. 해결: 글로벌 매니페스트
+  (`~/Library/pnpm/global/5/package.json` 등)에
+  `"pnpm": { "onlyBuiltDependencies": ["@anthropic-ai/claude-code"] }`를
+  등록하면 이후 업데이트부터 자동이다. 당장 복구는
+  `node <글로벌 node_modules>/@anthropic-ai/claude-code/install.cjs` 1회 실행.
+
 ---
 
 ## 확장 — 도메인 지식 스킬 추가
