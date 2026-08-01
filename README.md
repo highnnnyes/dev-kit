@@ -263,11 +263,13 @@ grep -h "^## .* Task" PROGRESS.md | grep -c "시도 [2-9]회"   # 재시도 발�
 | builder | sonnet (frontmatter 고정) | 태스크 단위 구현 |
 | builder-light | haiku (frontmatter 고정) | 판단 없는 기계적 작업 |
 
-stage-reviewer 조건부 승격의 동작 방식: frontmatter는 `model: fable`로 두고,
-execute-plan이 기본 호출 시 Task 파라미터로 `model: opus`를 명시해 강등한다.
-승격 조건이면 파라미터를 생략해 frontmatter의 fable이 적용된다 (Task 파라미터가
-fable을 직접 못 받는 환경이 있어 강등 방향으로 설계). 파라미터 덮어쓰기가 안 되는
-버전이면 전부 fable로 돌게 되며 — PROGRESS.md의 `model=` 기록으로 확인 가능하다.
+stage-reviewer 조건부 승격의 동작 방식: frontmatter는 `model: claude-fable-5`
+(**전체 모델 ID 필수** — `fable` 별칭은 frontmatter에서 무효라 호출 자체가
+실패한다, v1.3.3에서 수정)로 두고, execute-plan이 기본 호출 시 Task 파라미터로
+`model: opus`를 명시해 강등한다 (파라미터가 frontmatter를 덮어쓰는 동작은 실측
+검증됨). 승격 조건이면 파라미터를 생략해 frontmatter가 적용된다 — Task 파라미터는
+haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 강등 방향으로
+설계했다. 실제 투입 모델은 PROGRESS.md의 `model=` 기록으로 확인한다.
 
 > ⚠️ `CLAUDE_CODE_SUBAGENT_MODEL` 환경변수가 설정돼 있으면 에이전트
 > frontmatter의 model을 전부 덮어써 티어링이 무력화된다. 설정하지 마라.

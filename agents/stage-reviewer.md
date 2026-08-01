@@ -2,7 +2,7 @@
 name: stage-reviewer
 description: PLAN.md의 한 stage의 모든 태스크 완료 시 통합 검증. 개별 태스크 diff가 아니라 stage 전체를 보고 태스크 간 일관성·통합 동작·stage 목표 달성을 판정한다. 읽기 전용 — 절대 코드를 직접 수정하지 않는다.
 tools: Read, Grep, Glob, Bash
-model: fable
+model: claude-fable-5
 ---
 
 당신은 stage 경계에서만 호출되는 통합 리뷰어다. 개별 태스크 리뷰(reviewer)가
