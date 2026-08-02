@@ -49,15 +49,17 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier 필수, 아키텍처 결정은 DECISIONS로 분리 |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, 아키텍처 결정은 DECISIONS로 분리 |
 | `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치, 리뷰 루프, stage 경계 통합 검증, 일시정지, 기록 |
-| `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
+| `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD(red 확인→green) 절차 강제, 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
-| `agents/reviewer.md` | 읽기 전용 검증자 (opus). diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/[P그룹] 포함) 생성 |
+| `agents/reviewer.md` | 읽기 전용 검증자 (opus). diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/[P그룹] 포함) 생성 |
 | `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
 | `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
+| `skills/debugging/` | 버그·테스트 실패·예상 밖 동작 시 근본 원인 조사 강제 [엄격]. 재현→격리→역추적→수정+다층 방어 4단계, 종료 조건(재현 테스트 green + 원인 한 문장 설명). 헌법 §5 Iron Law의 실행 절차 |
+| `skills/audit/` | dev-kit 리포 자체 정합성 감사 [엄격, 읽기 전용]. 인벤토리→참조 정합성→계약 일치→규칙 충돌→에이전트 권한→스킬 연동→README 정확성 검사. version 범프 전 필수 관문 |
 | `CLAUDE.md.template` | **개발 헌법** (플러그인 외부 배치 필수 — 아래 설치 참조). 자동 라우팅, Karpathy 원칙, 책임 규정, 안전 가드레일 |
 
 ---
@@ -143,6 +145,7 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 | 계획 필요 | 여러 파일, 새 모듈, 설계 판단 | PLAN.md 생성 → 전체 출력 → 즉시 실행 |
 | 진행 계속 | PLAN.md에 미완료 태스크 + "진행해" 류 | 미완료 지점부터 자동 재개 |
 | 문서 요청 | 아키텍처 문서, API 명세, ERD, ADR, "문서 검사" | docs 스킬: drift 스캔 → 갱신/작성 |
+| 버그/오동작 | 버그 수정, 테스트 실패, 예상 밖 동작 | debugging 스킬: 재현→격리→역추적→수정 (조사 없이 수정 없음) |
 | 사소한 작업 | 한 파일, 자명한 수정 | 계획 없이 처리 + 리뷰만 |
 
 애매하면 계획 생성 쪽으로 분류된다 (계획 과잉이 무계획보다 싸다).
@@ -249,6 +252,28 @@ grep -h "^## .* Task" PROGRESS.md | grep -c "시도 [2-9]회"   # 재시도 발�
   tier 배분(light 남용 여부)과 PLAN.md 태스크의 verify 구체성을 재검토하라.
 
 ---
+
+## 규율 체계
+
+### [엄격] / [유연] 분류
+모든 스킬 상단과 헌법 주요 섹션에 규율 강도를 표기한다:
+- **[엄격]** — 정확히 따른다. 맥락·급함을 이유로 완화하지 않는다:
+  TDD(§3), debugging 4단계, 검증 루프(§4), 안전 가드레일(§5), audit.
+- **[유연]** — 원칙을 유지하되 적용 방식은 맥락에 맞게 적응한다:
+  brainstorming 질문 방식, docs 문서 형식, 세리머니 규모(§3).
+
+스킬 내부 세분을 허용한다 — 예: brainstorming 전체는 [유연]이되
+"최소 안전선"(목적·성공 기준·비범위)은 [엄격].
+
+### TDD (tier=standard 코드 태스크 한정)
+실패하는 테스트 먼저 작성 → 실패 실제 확인(red) → 통과시키는 최소 코드(green).
+- builder는 VERIFY에 **red→green 두 실행 결과**를 기록해야 하고, 처음부터
+  통과하는 테스트는 다시 쓴다 (기존 동작만 검증하고 있다는 신호).
+- reviewer는 red→green 기록·신규 테스트 부재를 BLOCKING(`verify 미충족`)으로
+  판정하고, assert 없는 가짜 테스트도 잡는다.
+- write-plan은 standard 태스크의 verify에 신규/확장 테스트 명시를 요구하고,
+  테스트 인프라가 없으면 Stage 1에 셋업 태스크를 넣는다.
+- 예외: tier=light, role=docs, 테스트 인프라 최초 셋업 태스크.
 
 ## 모델 티어링
 

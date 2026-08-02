@@ -8,9 +8,12 @@ Claude Code 플러그인 리포. 순수 마크다운 — 빌드·테스트·런�
 - 사용법·설치·튜닝·환경별 함정 → `README.md`
 - 서브에이전트 (builder / builder-light / reviewer / stage-reviewer) → `agents/`
 - 커맨드 (write-plan / execute-plan) → `commands/`
-- 스킬 (brainstorming / grill / docs / _template) → `skills/`
+- 스킬 (brainstorming / grill / docs / debugging / audit / _template) → `skills/`
 
 ## 수정 규칙
+- **[엄격]** plugin.json version을 올리기 전에 audit 스킬을 반드시 실행한다.
+  BLOCKING이 있으면 해결 전 push 금지. WARNING은 사용자 판단.
+  감사 결과 요약은 커밋 메시지 본문에 한 줄로 남긴다.
 - 수정 후 `.claude-plugin/plugin.json` version 올리고 push → 각 기기에서
   `/plugin marketplace update dev-kit` + `/plugin update dev-kit`.
 - `CLAUDE.md.template`은 `~/dev/CLAUDE.md`로 **심볼릭 링크** 배포 —

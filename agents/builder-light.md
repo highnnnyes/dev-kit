@@ -20,6 +20,8 @@ model: haiku
    상위 티어로 넘기는 게 싸다).
 4. 시크릿·파괴적 명령 관련 CLAUDE.md §5 가드레일을 그대로 따른다.
 5. 최소 코드. 태스크 목표를 넘는 기능·추상화 금지 (Simplicity First).
+6. tier=light는 TDD 대상이 아니다 (헌법 §3 TDD는 tier=standard 한정).
+   단 verify는 반드시 실행한다.
 
 ## 출력 형식 (builder와 동일)
 ```
