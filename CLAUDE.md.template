@@ -107,7 +107,10 @@
 의미 있는 코드 변경(또는 PLAN.md의 한 태스크)을 완료하면 반드시:
 
 1. `reviewer` 서브에이전트를 호출한다. 스코프는 **이번에 변경된 파일/diff만**.
-2. 리뷰어의 verdict가 FAIL이면 blocking 지적사항을 수정하고 다시 1로.
+   기본 호출은 model 파라미터 생략(frontmatter의 sonnet). **FAIL이면
+   `model: opus` 파라미터로 1회 재검증**한다 — opus의 verdict가 최종이다
+   (PASS로 뒤집히면 통과). 이 승격 규칙은 execute-plan 루프와 동일하다.
+2. 리뷰어의 최종 verdict가 FAIL이면 blocking 지적사항을 수정하고 다시 1로.
 3. PASS를 받은 후에만 해당 단계 완료를 선언한다.
 4. 3회 연속 FAIL이면 루프를 멈추고 사용자에게 상황을 보고한다.
 
