@@ -72,7 +72,9 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      - opus FAIL → 최종 FAIL. 재브리핑에는 opus의 BLOCKING을 사용한다.
      sonnet PASS는 승격 없이 그대로 최종 PASS다.
    - FAIL(최종 verdict 기준) → BLOCKING 사항을 브리핑에 추가해서 builder
-     재호출. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
+     재호출. 수정 후 재검증은 **다시 sonnet 기본 호출부터** 시작한다 —
+     승격은 라운드마다 독립이며, 직전 라운드가 opus였다는 이유로 opus를
+     이어 쓰지 않는다. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
      횟수는 최종 verdict로만 센다 — 오판으로 뒤집힌 태스크는 시도 1회다.
    - PASS → 4로.
 4. **체크 + 기록**: PLAN.md에서 해당 태스크를 [x]로 갱신하고, 다음 두 가지를 남긴다:

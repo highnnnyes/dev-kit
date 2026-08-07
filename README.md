@@ -295,7 +295,7 @@ sonnet의 false-PASS는 이 지표로만 잡는다):
 | 설계 (brainstorming / grill / write-plan — 메인 세션) | fable 권장 | 계획 품질이 루프 전체를 결정 — 여기 아끼면 뒤에서 다 낸다 |
 | 실행 루프 오케스트레이션 (메인 세션) | `/model opus`로 낮추기 권장 | 상태 관리·브리핑 작성 위주, 최고 티어 불필요 |
 | stage-reviewer | 기본 opus, 조건부 fable 승격 | 통합 판정은 보통 opus로 충분. 승격 조건: 인증·결제·데이터 마이그레이션·외부 연동·되돌리기 어려운 변경 포함 stage, 또는 DECISIONS 항목이 구현된 stage. 승격 사유는 PROGRESS.md에 기록 |
-| reviewer | sonnet 1차, FAIL 시 opus 재검증 | 호출의 대다수(실측 95%)가 PASS 확인 — 여기에 opus는 과잉. FAIL일 때만 opus가 재검증해 verdict를 확정한다(오버헤드는 FAIL율만큼만). **한계**: 승격은 sonnet의 false-FAIL만 교정하고 false-PASS(결함을 놓치고 통과)는 못 잡는다 — 감시 지표는 아래 재시도율 해석 기준 |
+| reviewer | sonnet 1차, FAIL 시 opus 재검증 | 호출의 대다수(실측 95%)가 PASS 확인 — 여기에 opus는 과잉. FAIL일 때만 opus가 재검증해 verdict를 확정한다(오버헤드는 FAIL율만큼만). 승격은 라운드마다 독립 — 수정 후 재검증은 다시 sonnet 기본 호출부터 시작한다(직전 라운드가 opus였어도 opus를 이어 쓰지 않는다). **한계**: 승격은 sonnet의 false-FAIL만 교정하고 false-PASS(결함을 놓치고 통과)는 못 잡는다 — 감시 지표는 아래 재시도율 해석 기준 |
 | builder | sonnet (frontmatter 고정) | 태스크 단위 구현 |
 | builder-light | haiku (frontmatter 고정) | 판단 없는 기계적 작업 |
 
