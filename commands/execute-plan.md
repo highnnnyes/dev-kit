@@ -117,8 +117,10 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    - **롤링 요약 (통합검증 기록 후 마지막 절차)**: PROGRESS.md가 stage 수에
      비례해 커지는 것을 막는다. 반드시 stage-reviewer 호출·기록이 **끝난 뒤**
      수행한다 (stage-reviewer는 현 stage 전문을 읽어야 한다):
-     1. 종료된 stage의 태스크 블록들과 `Stage N 시작 — base=` 라인 원문을
-        `PROGRESS.archive.md`(프로젝트 루트, 없으면 생성)에 그대로 append.
+     1. 종료된 stage의 태스크 블록들, `Stage N 시작 — base=` 라인,
+        `Stage N 통합검증` 블록 원문을 `PROGRESS.archive.md`(프로젝트 루트,
+        없으면 생성)에 그대로 append — 요약으로 치환되는 모든 라인은
+        반드시 archive에 원문이 먼저 남아야 한다.
      2. PROGRESS.md에서 해당 블록들을 요약 한 줄로 치환:
         `## Stage N 요약 — 태스크 X개 · FAIL Y건([유형 요약]) · 통합검증 [PASS|FAIL후PASS] · 결정: [주요 결정 or 없음]`
         (통합검증 라인은 요약에 흡수하고 삭제한다.)
