@@ -3,6 +3,26 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.5.0 — 2026-08-07
+비용 구조 개선 3종. 절대 조건: 재시도율 5% 유지 — 적용 후 1~2개 stage
+실측에서 재시도율 급락(0~2%) 또는 stage-reviewer FINDINGS 증가 시
+리뷰 티어링을 롤백한다 (README 재시도율 해석 기준 참조).
+
+- **PROGRESS.md 롤링 요약** (execute-plan, stage-reviewer, README):
+  stage 종료(통합검증 기록 후) 시 해당 stage 블록을 요약 한 줄로 압축,
+  원문은 PROGRESS.archive.md에 선기록. 최근 5개 태스크 블록은 전문 유지.
+  stage-reviewer는 PROGRESS.md만 읽음 — 입력이 stage 수와 무관하게 상수.
+  검증 통계는 PROGRESS.md + archive 합산.
+- **reviewer 2단 티어링** (reviewer, execute-plan, 헌법 §4, README):
+  기본 sonnet, FAIL 시에만 opus 재검증 — opus verdict 최종. FAIL 카운트는
+  최종 verdict 기준. reviewer=[sonnet|sonnet→opus] + 승격리뷰 줄로 오판율
+  추적. 헌법 기본 검증 루프(단발 경로)에도 동일 승격 규칙 동기화.
+  stage-reviewer는 opus(조건부 fable) 유지.
+- **태스크 분해 단위 5~10분** (write-plan, 헌법 §4, README): 상한
+  "신규/확장 테스트 1~2개 + 구현" 명시, [P그룹]·TDD 규칙 무변경, 예시 갱신.
+- 롤백: 변경별 커밋 분리 — 티어링 롤백은 reviewer frontmatter `opus` 복원
+  + execute-plan 승격 절 + 헌법 §4 승격 문구 제거 (또는 해당 커밋 2건 revert).
+
 ## v1.4.1 — 2026-08-07
 외부 리뷰(전 파일 검토) 검증 후 유효 결함 반영.
 
