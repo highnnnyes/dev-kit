@@ -20,7 +20,7 @@
    ↓
 (요구사항 모호 시) brainstorming ──→ DESIGN.md   ← 질문으로 설계 확정
    ↓        (대형/고위험 시) grill: 설계/계획 심문
-/write-plan ──→ PLAN.md               ← stage → 2~5분 태스크, role 태그, [P]병렬 그룹
+/write-plan ──→ PLAN.md               ← stage → 5~10분 태스크, role 태그, [P]병렬 그룹
    ↓ (DECISIONS 없으면 대기 없이)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함)
    │
@@ -208,8 +208,8 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 - [ ] D1: PDF 라이브러리 — puppeteer(정확한 렌더링, 무거움) vs pdfkit(가벼움, 레이아웃 수동)
 
 ## Stage 1: 데이터 준비 — 완료 조건: export API가 JSON 반환
-- [ ] 1.1 export 서비스 골격 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · verify: 유닛테스트 통과
-- [ ] 1.2 [P1] 템플릿 컴포넌트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · verify: 스토리북 렌더 확인
+- [ ] 1.1 export 서비스 + 직렬화 유닛테스트 2개 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · verify: 신규 테스트 2개 red→green
+- [ ] 1.2 [P1] 템플릿 컴포넌트 + 렌더 테스트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · verify: 신규 렌더 테스트 red→green + 스토리북 확인
 - [ ] 1.3 [P1] 테스트 픽스처 · 파일: `tests/fixtures/report.ts` (신규) · role: test · tier: light · verify: import 에러 없음
 ```
 

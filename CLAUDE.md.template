@@ -116,7 +116,7 @@
 
 ### 단계별 자동 진행 (PLAN.md + /write-plan + /execute-plan)
 - 비자명한 기능/설계 작업은 `/write-plan`으로 PLAN.md를 먼저 생성한다
-  (단계 → 2~5분 태스크, 각 태스크에 파일 경로·verify·role/tier 태그 필수).
+  (단계 → 5~10분 태스크, 각 태스크에 파일 경로·verify·role/tier 태그 필수).
 - 실행은 `/execute-plan`으로: 태스크마다 신선한 `builder` 서브에이전트가 구현하고
   `reviewer`가 검증한다. 메인 에이전트는 오케스트레이터 역할만 하여
   긴 작업에서도 메인 컨텍스트 오염을 방지한다.

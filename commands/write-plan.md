@@ -1,5 +1,5 @@
 ---
-description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) → 2~5분 단위 태스크(task)
+description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) → 5~10분 단위 태스크(task)
 ---
 
 사용자가 준 설계(또는 $ARGUMENTS로 지정된 문서/기능 설명)를 분석해서
@@ -9,7 +9,9 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 ## 분해 원칙
 1. 먼저 관련 코드를 실제로 읽어라. 코드를 안 본 계획은 금지 (파일 경로·기존 패턴 확인).
 2. **단계(stage)**: 독립적으로 검증 가능한 기능 단위. 각 단계는 완료 조건을 가진다.
-3. **태스크(task)**: 한 단계를 2~5분 분량으로 쪼갠 것. 각 태스크는 반드시:
+3. **태스크(task)**: 한 단계를 5~10분 분량으로 쪼갠 것. **상한: 태스크
+   하나가 "신규/확장 테스트 1~2개 + 이를 통과시키는 구현"을 넘으면 더
+   쪼갠다** — 시간이 아니라 이 범위가 실질 기준이다. 각 태스크는 반드시:
    - 정확한 파일 경로 (신규 생성이면 "신규" 표기)
    - 한 문장 목표
    - verify 방법 (실행할 테스트/명령, 확인할 출력).
@@ -44,8 +46,8 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 - [ ] D1: [결정 사항 + 선택지 + 트레이드오프]
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
-- [ ] 1.1 [목표 한 문장] · 파일: `path/to/file` · role: backend · tier: standard · verify: [방법]
-- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · verify: [방법]
+- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · verify: [신규 테스트 1~2개 red→green]
+- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · verify: [신규 테스트 red→green + 확인 방법]
 - [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · verify: [방법]
 
 ## Stage 2: ...
