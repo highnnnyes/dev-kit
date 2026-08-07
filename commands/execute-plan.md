@@ -103,6 +103,16 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      `## [날짜시각] Stage N 통합검증 — [PASS|FAIL] · FINDINGS X건 · model=[opus|fable]`
      model=에는 **실제 투입된 모델**을 적는다. fable 승격 시 다음 줄에
      `- 승격사유: [해당 승격 조건]`을 추가한다.
+   - **롤링 요약 (통합검증 기록 후 마지막 절차)**: PROGRESS.md가 stage 수에
+     비례해 커지는 것을 막는다. 반드시 stage-reviewer 호출·기록이 **끝난 뒤**
+     수행한다 (stage-reviewer는 현 stage 전문을 읽어야 한다):
+     1. 종료된 stage의 태스크 블록들과 `Stage N 시작 — base=` 라인 원문을
+        `PROGRESS.archive.md`(프로젝트 루트, 없으면 생성)에 그대로 append.
+     2. PROGRESS.md에서 해당 블록들을 요약 한 줄로 치환:
+        `## Stage N 요약 — 태스크 X개 · FAIL Y건([유형 요약]) · 통합검증 [PASS|FAIL후PASS] · 결정: [주요 결정 or 없음]`
+        (통합검증 라인은 요약에 흡수하고 삭제한다.)
+     3. 단, **최근 5개 태스크 블록은 stage 소속과 무관하게 전문 유지**한다 —
+        다음 태스크 브리핑의 NOTES/NON-BLOCKING 인계에 필요하다.
 5. reviewer의 NEXT TASK 브리핑과 builder의 NOTES를 다음 태스크 브리핑에 반영하고 1로.
 
 ## 경량화 규칙 (토큰 관리 — 헌법 §4 기본 검증 루프의 명시적 예외)
@@ -123,7 +133,8 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
 
 중단·완료 시 보고: 완료 태스크 수, 남은 태스크, 발생 이슈, 리뷰어 NON-BLOCKING 누적 목록.
 
-추가로 **검증 통계** 섹션을 포함한다 (PROGRESS.md의 구조화 라인에서 집계):
+추가로 **검증 통계** 섹션을 포함한다 (PROGRESS.md **+ PROGRESS.archive.md**의
+구조화 라인에서 집계한다 — 롤링 요약으로 압축된 stage의 원본 라인은 archive에 있다):
 - 총 태스크 / 1회 통과 / 재시도 발생(비율%) / BLOCKED
 - tier별 분포 (light/standard 각 몇 건, light 승급 건수)
 - FAIL 사유 상위 유형 (컨벤션 위반·기능 결함·verify 미충족·보안·기타)

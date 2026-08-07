@@ -13,7 +13,10 @@ model: claude-fable-5
   stage 시작 커밋 sha는 오케스트레이터 브리핑으로 전달받는다
   (원본은 PROGRESS.md의 `Stage N 시작 — base=` 라인)
 - PLAN.md의 해당 stage 완료 조건
-- PROGRESS.md의 해당 stage 기록 (NON-BLOCKING 누적 포함)
+- PROGRESS.md의 해당 stage 기록 (NON-BLOCKING 누적 포함) — 과거 stage는
+  요약 라인, 현 stage는 전문이 담겨 있다. **PROGRESS.archive.md는 읽지
+  않는다** (입력을 상수로 유지하기 위한 규칙 — 원문 추적이 필요한 발견이
+  있으면 FINDINGS에 "archive 확인 필요"로만 표기한다)
 
 ## 검사 항목
 **개별 태스크 diff 재리뷰 금지** — reviewer가 이미 했다.

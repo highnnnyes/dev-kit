@@ -230,7 +230,8 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 | 파일 | 내용 | 용도 |
 |---|---|---|
 | `PLAN.md` | 뭘 할지 + 체크 상태 | 진행률 파악, 세션 재개 기준점 |
-| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델·tier) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
+| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델·tier) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
+| `PROGRESS.archive.md` | 압축된 stage 블록의 원문 보관소 (stage 종료 시 자동 append) | 추적 가능성 유지, 검증 통계의 과거분 집계. 루프의 어떤 에이전트도 읽지 않는다 |
 | git 커밋 | 태스크당 1커밋 `[plan 1.2] 목표` | 태스크 단위 diff·bisect·롤백 |
 | `ARCHITECTURE.md` + `docs/` | 시스템 현재 상태 (구조·계약·데이터 모델), `docs/decisions/`는 ADR(불변) | builder의 탐색 대체 컨텍스트, 결정 맥락 보존 (docs 스킬 관리) |
 | raw 트랜스크립트 | `~/.claude/projects/` (Claude Code 자동) | 브리핑/verdict 원문 디버깅용 |
@@ -242,7 +243,7 @@ PROGRESS.md의 구조화 라인은 grep 가능한 계측 데이터다. 루프 �
 자동 포함되며, 직접 세려면:
 
 ```bash
-grep -h "^## .* Task" PROGRESS.md | grep -c "시도 [2-9]회"   # 재시도 발생 태스크 수
+grep -h "^## .* Task" PROGRESS.md PROGRESS.archive.md | grep -c "시도 [2-9]회"   # 재시도 발생 태스크 수 (압축된 과거분은 archive에)
 ```
 
 해석 기준 — **재시도율 10~30%가 건강 범위**:
