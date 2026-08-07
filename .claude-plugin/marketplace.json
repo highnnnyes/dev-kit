@@ -5,7 +5,7 @@
     {
       "name": "dev-kit",
       "source": "./",
-      "description": "Plan-driven autonomous dev loop: write-plan/execute-plan + builder/reviewer + brainstorming/grill/docs skills."
+      "description": "Plan-driven autonomous dev loop: write-plan/execute-plan + tier-routed builders (builder/builder-light) with TDD enforcement + independent reviewer per task + stage-reviewer integration review, plus brainstorming/grill/docs/debugging skills and repo self-audit."
     }
   ]
 }

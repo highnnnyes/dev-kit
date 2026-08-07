@@ -21,6 +21,9 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    확인한다. 존재하면 루프를 중단하고 진행 상황을 요약 보고한 뒤,
    "재개: `.dev-kit-pause` 삭제 후 '진행해'라고 지시"를 안내한다.
    태스크 중간에는 멈추지 않고 반드시 태스크 경계에서만 멈춘다.
+   **stage 시작 기록**: 이 태스크가 해당 stage의 첫 태스크면 PROGRESS.md에
+   `## [날짜시각] Stage N 시작 — base=<현재 HEAD sha>` 한 줄을 append한다 —
+   stage-reviewer의 통합 diff 스코프가 이 sha를 사용한다.
 
 1. **브리핑 작성**: builder가 신선한 컨텍스트에서 시작해도 바로 착수할 수 있게
    자족적인 브리핑을 만든다 — 태스크 목표, 파일 경로, verify 방법,
@@ -36,14 +39,26 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      태스크 내용에 맞게 그때그때 작성한다 — 별도 에이전트 파일을 만들 필요 없다.
 2. **builder 서브에이전트 호출** (브리핑 전달) → STATUS 수신.
    - **티어 라우팅**: tier=light면 builder-light를, 아니면 builder를 호출한다.
-     builder-light가 BLOCKED(판단 필요)를 반환하면 같은 태스크를 builder로
-     1회 재시도하고, 그것도 실패하면 정상 FAIL 카운트에 넣는다.
+     builder-light가 BLOCKED를 반환하면 같은 태스크를 builder로 1회
+     재시도하고, 그것도 실패하면 정상 FAIL 카운트에 넣는다. 승급 시
+     사유 태그로 tier를 재판정한다: `[판단 필요]`면 애초에 오분류였던
+     것이므로 PLAN.md의 tier를 standard로 재기입하고 TDD를 적용한다.
+     `[verify 미통과]`면 기계적 태스크가 맞으므로 light를 유지한다.
    - **병렬 디스패치**: 같은 [P그룹] 태스크들은 각각의 builder를 동시에 띄운다.
      조건: (a) 파일이 서로 겹치지 않을 것 — 겹치면 순차로 강등,
      (b) 동시 최대 3개 — 토큰 소모가 병렬 수에 비례하므로 상한을 지킨다,
      (c) 그룹 전체가 끝난 후 리뷰로 넘어간다.
-   - BLOCKED → 루프 중단, 사용자에게 사유와 함께 보고. (병렬 중이면 나머지
-     완료를 기다린 후 중단.)
+   - **병렬 그룹의 스코프 격리**: 그룹 완료 시점의 워킹트리에는 그룹 전체
+     변경이 섞여 있다. 각 builder의 CHANGED 파일 목록을 수집해서:
+     (a) 태스크별 reviewer 브리핑에 "스코프: `git diff -- <해당 파일들>`"로
+     스코프를 못박는다, (b) 커밋도 같은 목록으로 `git add <해당 파일들>`
+     부분 스테이징 후 커밋한다 — `git commit -a` 금지 (다른 태스크의
+     미리뷰 변경이 섞여 들어간다), (c) FAIL 태스크의 변경은 스테이징하지
+     않고 워킹트리에 남긴 채 재작업한다 — PASS 태스크만 커밋한다.
+   - BLOCKED → 사유 태그로 분기: `[전제 붕괴]`(태스크 정의·전제 문제)면
+     루프 중단, 사용자에게 사유와 함께 보고. `[verify 미통과]`(구현은 했으나
+     verify 실패)면 해당 태스크의 정상 FAIL 카운트에 산입하고 실패 내용을
+     브리핑에 추가해 재호출한다. (병렬 중이면 나머지 완료를 기다린 후 처리.)
 3. **reviewer 서브에이전트 호출** (스코프: 이 태스크의 diff만) → VERDICT 수신.
    병렬 그룹은 태스크별로 순차 리뷰한다 (리뷰까지 병렬화하면 지적사항 반영이 꼬인다).
    [P] 그룹 내 태스크의 리뷰에서는 NEXT TASK를 생략한다
@@ -69,6 +84,8 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
    (통합 검증)를 호출한다 — 스코프: stage 시작 커밋..HEAD 통합 diff +
    PLAN.md의 stage 완료 조건 + PROGRESS.md의 해당 stage 기록.
+   stage 시작 커밋은 PROGRESS.md의 `Stage N 시작 — base=` 라인에서 읽어
+   브리핑에 sha로 명시해 전달한다.
    - **모델 선택**: 기본은 Task 호출 시 `model: opus`를 **명시**한다
      (frontmatter의 fable을 강등). 아래 승격 조건 중 하나라도 해당하면
      model 파라미터를 **생략**해 frontmatter의 fable이 적용되게 한다:
@@ -80,6 +97,8 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      (builder→reviewer)로 처리한 뒤 stage-reviewer를 1회만 재호출한다.
      두 번째도 FAIL이면 루프를 멈추고 사용자에게 보고한다.
    - 생략: stage 태스크가 2개 이하이거나 문서 전용 stage.
+     **단, 오케스트레이터가 직접 처리한 태스크(경량화 규칙)가 하나라도
+     있으면 생략 불가** — 직접 처리분은 stage-reviewer가 유일한 독립 검증이다.
    - 결과를 PROGRESS.md에도 동일 구조화 형식으로 기록:
      `## [날짜시각] Stage N 통합검증 — [PASS|FAIL] · FINDINGS X건 · model=[opus|fable]`
      model=에는 **실제 투입된 모델**을 적는다. fable 승격 시 다음 줄에
@@ -88,14 +107,16 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
 
 ## 경량화 규칙 (토큰 관리 — 헌법 §4 기본 검증 루프의 명시적 예외)
 - 자명한 소형 태스크(설정 한 줄, 자명한 오타 수준)는 builder 없이 직접 처리해도 된다.
-  단, reviewer 검증은 stage 경계에서 반드시 수행한다. 이 부류는 성격상
-  tier=light이므로 TDD(§3, standard 한정) 대상이 아니다 — 판단이 들어가는
-  태스크는 직접 처리 대상이 아니다.
+  단, 직접 처리한 태스크는 stage 경계의 stage-reviewer 브리핑에 **목록으로
+  명시**해서 해당 diff의 태스크 레벨 검증을 받는다 (이때 stage-reviewer의
+  생략 조건은 무효). 이 부류는 성격상 tier=light이므로 TDD(§3, standard
+  한정) 대상이 아니다 — 판단이 들어가는 태스크는 직접 처리 대상이 아니다.
 - 연속된 소형 태스크 2~3개는 하나의 builder 브리핑으로 묶어도 된다.
   단, verify는 태스크별로 전부 실행한다.
 
 ## 중단 조건 (CLAUDE.md §4와 동일)
-(a) 태스크 3연속 FAIL / (b) builder BLOCKED / (c) 전 태스크 완료
+(a) 태스크 3연속 FAIL / (b) builder BLOCKED(`[전제 붕괴]` 한정 —
+`[verify 미통과]`는 FAIL 카운트로 흡수) / (c) 전 태스크 완료
 / (d) 다음 태스크가 아키텍처 결정·파괴적 작업·요구사항 불명 포함
 / (e) 사용자 중단 지시 / (f) stage-reviewer 2회 연속 FAIL
 / (g) `.dev-kit-pause` 파일 존재.

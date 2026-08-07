@@ -36,7 +36,10 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
 ### E) 에이전트 권한·비용
 - reviewer/stage-reviewer는 읽기 전용 tools인가
 - builder류 tools 제한이 유지되는가
-- 각 에이전트에 model 필드가 있는가
+- 각 에이전트에 model 필드가 있는가 (유효한 별칭/모델 ID인가)
+- **티어링 실측**: PROGRESS.md의 model= 라인은 자기보고라 회귀를 못 잡는다.
+  티어링 회귀가 의심되면(비용 급증, 품질 급변) 각 에이전트를 1회 호출해
+  "You are powered by" 문구로 실제 투입 모델을 확인하는 절차를 안내한다.
 
 ### F) 스킬 연동
 - 라우팅 ↔ 스킬 핸드오프가 양방향으로 맞물리는가

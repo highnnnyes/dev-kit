@@ -124,7 +124,8 @@
   즉시 착수**한다. 착수 전 PLAN.md 체크를 갱신한다.
 - stage 완료 시 stage-reviewer(통합 검증)를 거친다. 개별 태스크 리뷰가
   구조적으로 볼 수 없는 태스크 간 일관성·통합 동작·stage 목표 달성을 판정한다.
-- 자동 진행이 멈추는 조건: (a) 태스크 3회 연속 FAIL, (b) builder BLOCKED,
+- 자동 진행이 멈추는 조건: (a) 태스크 3회 연속 FAIL, (b) builder BLOCKED
+  (`[전제 붕괴]` 한정 — `[verify 미통과]` BLOCKED는 FAIL 카운트로 흡수),
   (c) 전 태스크 완료, (d) 다음 태스크가 아키텍처 결정·파괴적 작업·요구사항 불명 포함
   (§1 Confusion Protocol / §5 가드레일 우선), (e) 사용자의 중단 지시,
   (f) stage-reviewer 2회 연속 FAIL, (g) `.dev-kit-pause` 파일 존재
