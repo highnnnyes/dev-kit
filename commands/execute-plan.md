@@ -63,14 +63,23 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    병렬 그룹은 태스크별로 순차 리뷰한다 (리뷰까지 병렬화하면 지적사항 반영이 꼬인다).
    [P] 그룹 내 태스크의 리뷰에서는 NEXT TASK를 생략한다
    (그룹 완료 후 마지막 리뷰만 NEXT TASK 포함).
-   - FAIL → BLOCKING 사항을 브리핑에 추가해서 builder 재호출. 같은 태스크
-     3회 FAIL이면 루프 중단, 보고.
+   - **리뷰 2단 티어링**: 기본 호출은 model 파라미터를 생략한다(frontmatter의
+     sonnet 적용). **sonnet이 FAIL이면** 같은 브리핑에 sonnet의 BLOCKING
+     목록을 첨부해 reviewer를 `model: opus` 파라미터로 1회 재호출한다
+     (파라미터가 frontmatter를 덮어쓰는 동작 — stage-reviewer 강등과 같은
+     메커니즘, 방향만 승격). opus의 verdict가 최종이다:
+     - opus PASS → 통과 (sonnet 오판 — 아래 승격리뷰 기록).
+     - opus FAIL → 최종 FAIL. 재브리핑에는 opus의 BLOCKING을 사용한다.
+     sonnet PASS는 승격 없이 그대로 최종 PASS다.
+   - FAIL(최종 verdict 기준) → BLOCKING 사항을 브리핑에 추가해서 builder
+     재호출. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
+     횟수는 최종 verdict로만 센다 — 오판으로 뒤집힌 태스크는 시도 1회다.
    - PASS → 4로.
 4. **체크 + 기록**: PLAN.md에서 해당 태스크를 [x]로 갱신하고, 다음 두 가지를 남긴다:
    - **PROGRESS.md** (프로젝트 루트, 없으면 생성)에 태스크당 한 블록 append.
      첫 줄은 아래 구조화 형식을 **그대로** 지킨다 (통계 집계가 이 라인을 grep한다):
      ```
-     ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델] · reviewer=[모델] · tier=[light|standard]
+     ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델] · reviewer=[sonnet|sonnet→opus] · tier=[light|standard]
      - 변경: [builder CHANGED 요약]
      - 검증: [reviewer VERIFIED 요약]
      - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|기타)]
@@ -78,7 +87,9 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      ```
      FAIL이 한 번이라도 있었던 태스크는 `- FAIL사유:` 줄을 반드시 포함한다
      (1회 통과면 생략). builder=에는 실제 투입된 에이전트의 모델을 적는다
-     (light→builder 승급 시 최종 통과시킨 쪽).
+     (light→builder 승급 시 최종 통과시킨 쪽). reviewer=에는 승격 발생 시
+     `sonnet→opus`를 적고 다음 줄을 추가한다 (오판율 추적용):
+     `- 승격리뷰: [PASS로 뒤집음(오판)|FAIL 유지] + 사유 한 줄`
    - **git commit** 태스크당 1회. 메시지: `[plan 1.2] 태스크 목표 한 줄` +
      본문에 verify 결과. 이러면 태스크 단위로 diff·bisect·롤백이 가능하다.
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
@@ -138,3 +149,5 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
 - 총 태스크 / 1회 통과 / 재시도 발생(비율%) / BLOCKED
 - tier별 분포 (light/standard 각 몇 건, light 승급 건수)
 - FAIL 사유 상위 유형 (컨벤션 위반·기능 결함·verify 미충족·보안·기타)
+- 리뷰 승격 건수 / 오판율 (승격 중 opus가 PASS로 뒤집은 비율 —
+  높으면 sonnet이 과하게 깐깐, 승격이 0에 수렴하면 느슨할 가능성)
