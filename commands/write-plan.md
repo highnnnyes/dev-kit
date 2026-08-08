@@ -36,6 +36,11 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    포함되면 해당 stage 마지막에 문서 태스크를 추가하라 (docs 스킬 기준 적용):
    `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · verify: 문서-코드 drift 스캔 통과`
    구조 변경이 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉이다.
+7. **ROLES 블록**: 계획에 등장하는 role마다 2~3줄 전문가 지침을 PLAN.md의
+   `## ROLES` 블록에 **1회 작성**하라 — 실행 시 오케스트레이터가 태스크
+   브리핑에 이 지침을 그대로 복사해 주입한다 (태스크마다 재작성하지 않는다).
+   지침은 그 role의 우선순위·가드레일 중심으로 쓴다
+   (예: db → 롤백 경로 확보, test → 경계값·에러 경로 우선).
 
 ## PLAN.md 형식
 ```markdown
@@ -44,6 +49,10 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 
 ## DECISIONS (사용자 결정 필요 — 비어있으면 생략)
 - [ ] D1: [결정 사항 + 선택지 + 트레이드오프]
+
+## ROLES (등장 role별 전문가 지침 — 브리핑에 그대로 복사됨)
+- backend: 당신은 백엔드 엔지니어다. [이 프로젝트 맥락의 우선순위·가드레일 2~3줄]
+- test: 당신은 테스트 엔지니어다. 경계값과 에러 경로를 우선 커버하라.
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
 - [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · verify: [신규 테스트 1~2개 red→green]
