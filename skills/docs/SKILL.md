@@ -84,7 +84,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 1. **write-plan**: 계획에 구조 변경(새 모듈, 인터페이스 변경, 스키마
    변경)이 포함되면 해당 stage 마지막에 문서 태스크 자동 추가:
    ```markdown
-   - [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · verify: drift 스캔 통과
+   - [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · risk: normal · verify: drift 스캔 통과
    ```
    구조 변경 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉.
 2. **DECISIONS → ADR 파이프**: write-plan의 DECISIONS에서 사용자가

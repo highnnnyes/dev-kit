@@ -26,6 +26,11 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
      불필요) 또는 `standard`(그 외 전부). 판단이 조금이라도 들어가면
      standard. 애매하면 standard — 잘못된 light는 재시도 비용으로 절감분을
      까먹는다. 실행 시 light는 builder-light로 라우팅된다.
+   - **risk 태그**: `high` 또는 `normal`(기본). 태스크의 요구사항에
+     **수치·경계·개수 조건, 보안, 데이터 변형/삭제, 동시성** 중 하나라도
+     포함되면 `high`. 실행 시 high 태스크는 FAIL 여부와 무관하게 처음부터
+     opus 리뷰어로 라우팅된다 — 약한 리뷰어가 놓쳐서 PASS시키는 결함은
+     사후 승격으로 잡히지 않기 때문이다. 태그를 생략하면 normal로 간주한다.
    를 가진다. "구현한다" 같은 모호한 태스크 금지 — verify가 안 떠오르면 태스크가 너무 크다는 뜻이니 더 쪼개라.
 4. 태스크 간 의존 관계가 있으면 순서로 표현한다. **서로 의존이 없고 파일이
    겹치지 않는 태스크들은 [P] 그룹으로 묶어라** — 같은 그룹은 병렬 실행된다.
@@ -34,7 +39,7 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    분리해서 맨 위에 모아라 — 이건 사용자가 결정한다 (§1 Think Before Coding).
 6. **문서 태스크**: 계획에 구조 변경(새 모듈, 인터페이스 변경, 스키마 변경)이
    포함되면 해당 stage 마지막에 문서 태스크를 추가하라 (docs 스킬 기준 적용):
-   `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · verify: 문서-코드 drift 스캔 통과`
+   `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · risk: normal · verify: 문서-코드 drift 스캔 통과`
    구조 변경이 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉이다.
 7. **ROLES 블록**: 계획에 등장하는 role마다 2~3줄 전문가 지침을 PLAN.md의
    `## ROLES` 블록에 **1회 작성**하라 — 실행 시 오케스트레이터가 태스크
@@ -55,9 +60,9 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 - test: 당신은 테스트 엔지니어다. 경계값과 에러 경로를 우선 커버하라.
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
-- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · verify: [신규 테스트 1~2개 red→green]
-- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · verify: [신규 테스트 red→green + 확인 방법]
-- [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · verify: [방법]
+- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: [신규 테스트 1~2개 red→green]
+- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: [신규 테스트 red→green + 확인 방법]
+- [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · risk: normal · verify: [방법]
 
 ## Stage 2: ...
 ```

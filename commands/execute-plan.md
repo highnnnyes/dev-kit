@@ -70,9 +70,19 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    병렬 그룹은 태스크별로 순차 리뷰한다 (리뷰까지 병렬화하면 지적사항 반영이 꼬인다).
    [P] 그룹 내 태스크의 리뷰에서는 NEXT TASK를 생략한다
    (그룹 완료 후 마지막 리뷰만 NEXT TASK 포함).
-   - **리뷰 2단 티어링**: 기본 호출은 model 파라미터를 생략한다(frontmatter의
-     sonnet 적용). **sonnet이 FAIL이면** 같은 브리핑에 sonnet의 BLOCKING
-     목록을 첨부해 reviewer를 `model: opus` 파라미터로 1회 재호출한다
+   - **리뷰 2단 티어링**: 승격 조건은 둘이다.
+     - **(1) 사후 승격**: 기본 호출은 model 파라미터를 생략한다(frontmatter의
+       sonnet 적용). **sonnet이 FAIL이면** opus로 승격 재검증한다.
+     - **(2) 사전 승격 [엄격]**: 태스크에 `risk: high` 태그가 있으면 FAIL
+       여부와 무관하게 **처음부터 `model: opus`로 리뷰한다** (sonnet 호출
+       자체를 건너뛴다). write-plan이 요구사항에 **수치·경계·개수 조건,
+       보안, 데이터 변형/삭제, 동시성**이 포함된 태스크에 이 태그를 달고,
+       여기서 그 태그로 라우팅한다. 태그가 없어도 브리핑의 요구사항에 이
+       조건들이 명백히 보이면 사전 승격하고 PROGRESS.md에 사유를 남긴다.
+       근거: (1)만으로는 약한 모델이 놓쳐서 PASS한 결함이 승격을
+       트리거하지 못한다 — 거짓 PASS는 사후 승격의 사각지대다.
+     사후 승격 시에는 같은 브리핑에 sonnet의 BLOCKING 목록을 첨부해
+     reviewer를 `model: opus` 파라미터로 1회 재호출한다
      (파라미터가 frontmatter를 덮어쓰는 동작 — stage-reviewer 강등과 같은
      메커니즘, 방향만 승격). opus의 verdict가 최종이다:
      - opus PASS → 통과 (sonnet 오판 — 아래 승격리뷰 기록).
@@ -80,15 +90,16 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      sonnet PASS는 승격 없이 그대로 최종 PASS다.
    - FAIL(최종 verdict 기준) → BLOCKING 사항을 브리핑에 추가해서 builder
      재호출. 수정 후 재검증은 **다시 sonnet 기본 호출부터** 시작한다 —
-     승격은 라운드마다 독립이며, 직전 라운드가 opus였다는 이유로 opus를
-     이어 쓰지 않는다. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
+     사후 승격은 라운드마다 독립이며, 직전 라운드가 opus였다는 이유로 opus를
+     이어 쓰지 않는다. 단 **사전 승격(risk: high)은 태스크의 속성**이므로
+     모든 라운드에서 opus를 유지한다. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
      횟수는 최종 verdict로만 센다 — 오판으로 뒤집힌 태스크는 시도 1회다.
    - PASS → 4로.
 4. **체크 + 기록**: PLAN.md에서 해당 태스크를 [x]로 갱신하고, 다음 두 가지를 남긴다:
    - **PROGRESS.md** (프로젝트 루트, 없으면 생성)에 태스크당 한 블록 append.
      첫 줄은 아래 구조화 형식을 **그대로** 지킨다 (통계 집계가 이 라인을 grep한다):
      ```
-     ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델] · reviewer=[sonnet|sonnet→opus] · tier=[light|standard]
+     ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델] · reviewer=[sonnet|sonnet→opus|opus(사전승격)] · tier=[light|standard] · risk=[normal|high]
      - 변경: [builder CHANGED 요약]
      - 검증: [reviewer VERIFIED 요약]
      - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|기타)]
@@ -96,9 +107,12 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      ```
      FAIL이 한 번이라도 있었던 태스크는 `- FAIL사유:` 줄을 반드시 포함한다
      (1회 통과면 생략). builder=에는 실제 투입된 에이전트의 모델을 적는다
-     (light→builder 승급 시 최종 통과시킨 쪽). reviewer=에는 승격 발생 시
+     (light→builder 승급 시 최종 통과시킨 쪽). reviewer=에는 사후 승격 발생 시
      `sonnet→opus`를 적고 다음 줄을 추가한다 (오판율 추적용):
      `- 승격리뷰: [PASS로 뒤집음(오판)|FAIL 유지] + 사유 한 줄`
+     사전 승격(risk: high)은 `opus(사전승격)`으로 적고 승격리뷰 줄 대신
+     다음 줄을 추가한다: `- 사전승격사유: [PLAN.md risk: high | 태그 없음 —
+     발견한 조건 한 줄]`. 오판율 통계는 사후 승격만 집계 대상이다.
    - **git commit** 태스크당 1회. 메시지: `[plan 1.2] 태스크 목표 한 줄` +
      본문에 verify 결과. 이러면 태스크 단위로 diff·bisect·롤백이 가능하다.
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
@@ -148,6 +162,8 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
   명시**해서 해당 diff의 태스크 레벨 검증을 받는다 (이때 stage-reviewer의
   생략 조건은 무효). 이 부류는 성격상 tier=light이므로 TDD(§3, standard
   한정) 대상이 아니다 — 판단이 들어가는 태스크는 직접 처리 대상이 아니다.
+  **`risk: high` 태스크는 직접 처리 대상이 아니다** — 사전 승격의 목적이
+  독립 opus 검증이므로 직접 처리는 그 목적을 통째로 우회한다.
 - 연속된 소형 태스크 2~3개는 하나의 builder 브리핑으로 묶어도 된다.
   단, verify는 태스크별로 전부 실행한다.
 
@@ -164,6 +180,7 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
 구조화 라인에서 집계한다 — 롤링 요약으로 압축된 stage의 원본 라인은 archive에 있다):
 - 총 태스크 / 1회 통과 / 재시도 발생(비율%) / BLOCKED
 - tier별 분포 (light/standard 각 몇 건, light 승급 건수)
+- risk별 분포 (normal/high 각 몇 건 — high는 전부 opus 사전 승격)
 - FAIL 사유 상위 유형 (컨벤션 위반·기능 결함·verify 미충족·보안·기타)
-- 리뷰 승격 건수 / 오판율 (승격 중 opus가 PASS로 뒤집은 비율 —
+- 리뷰 사후 승격 건수 / 오판율 (사후 승격 중 opus가 PASS로 뒤집은 비율 —
   높으면 sonnet이 과하게 깐깐, 승격이 0에 수렴하면 느슨할 가능성)

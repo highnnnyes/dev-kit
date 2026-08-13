@@ -1,7 +1,7 @@
 {
   "name": "dev-kit",
-  "version": "1.5.2",
-  "description": "Plan-driven autonomous dev loop: /write-plan decomposes designs into 5-10min tasks (PLAN.md) with TDD enforcement (tier=standard: new-test-required verify), /execute-plan runs tier-routed builders (builder/sonnet with red->green TDD, builder-light/haiku) -> reviewer(read-only, independent verdict incl. TDD compliance) per task, plus stage-reviewer integration review at stage boundaries, with PROGRESS.md + per-task git commit logging and file-based pause (.dev-kit-pause). Includes brainstorming/grill/docs skills plus systematic debugging (root-cause-first, reproduce->isolate->trace->fix) and repo self-audit, with strict/flexible discipline tagging.",
+  "version": "1.6.0",
+  "description": "Plan-driven autonomous dev loop: /write-plan decomposes designs into 5-10min tasks (PLAN.md) with TDD enforcement (tier=standard: new-test-required verify), /execute-plan runs tier-routed builders (builder/sonnet with red->green TDD, builder-light/haiku) -> reviewer(read-only incl. no Bash-mediated edits; independent verdict with a requirement traceability table demanding measured evidence; risk:high tasks reviewed by opus upfront) per task, plus stage-reviewer integration review at stage boundaries, with PROGRESS.md + per-task git commit logging and file-based pause (.dev-kit-pause). Includes brainstorming/grill/docs skills plus systematic debugging (root-cause-first, reproduce->isolate->trace->fix) and repo self-audit, with strict/flexible discipline tagging.",
   "author": {
     "name": "High"
   },

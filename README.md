@@ -20,15 +20,16 @@
    ↓
 (요구사항 모호 시) brainstorming ──→ DESIGN.md   ← 질문으로 설계 확정
    ↓        (대형/고위험 시) grill: 설계/계획 심문
-/write-plan ──→ PLAN.md               ← stage → 5~10분 태스크, role 태그, [P]병렬 그룹
+/write-plan ──→ PLAN.md               ← stage → 5~10분 태스크, role/tier/risk 태그, [P]병렬 그룹
    ↓ (DECISIONS 없으면 대기 없이)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함)
    │
    │  태스크마다: (착수 전 .dev-kit-pause 확인 — 있으면 태스크 경계에서 안전 정지)
    ├─→ tier 라우팅: standard → builder(sonnet) / light → builder-light(haiku)
    │     (신선한 컨텍스트 + role 페르소나 주입, light BLOCKED 시 builder로 1회 승급)
-   ├─→ reviewer (sonnet 1차, 읽기 전용, 독립 컨텍스트) — PASS/FAIL 판정
-   │     (FAIL 시에만 opus로 승격 재검증 — opus verdict가 최종, 오판율 기록)
+   ├─→ reviewer (sonnet 1차, 읽기 전용, 독립 컨텍스트) — 요구사항 추적표 + PASS/FAIL 판정
+   │     (FAIL 시 opus 승격 재검증 — opus verdict가 최종, 오판율 기록.
+   │      risk: high 태스크는 FAIL 여부와 무관하게 처음부터 opus)
    ├─→ PLAN.md 체크 + PROGRESS.md 기록 + git 커밋
    └─→ NEXT TASK로 다음 태스크 (반복)
    │
@@ -50,18 +51,18 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, 아키텍처 결정은 DECISIONS로 분리 |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, 아키텍처 결정은 DECISIONS로 분리 |
 | `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치, 리뷰 루프, stage 경계 통합 검증, 일시정지, 기록 |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD(red 확인→green) 절차 강제, 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
-| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 — 아래 모델 티어링 참조). diff 스코프 한정, PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/[P그룹] 포함) 생성 |
-| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
+| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/risk/[P그룹] 포함) 생성. 읽기 전용은 Bash 경유 수정까지 금지 |
+| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
 | `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
 | `skills/debugging/` | 버그·테스트 실패·예상 밖 동작 시 근본 원인 조사 강제 [엄격]. 재현→격리→역추적→수정+다층 방어 4단계, 종료 조건(재현 테스트 green + 원인 한 문장 설명). 헌법 §5 Iron Law의 실행 절차 |
 | `skills/audit/` | dev-kit 리포 자체 정합성 감사 [엄격, 읽기 전용]. 인벤토리→참조 정합성→계약 일치→규칙 충돌→에이전트 권한→스킬 연동→README 정확성 검사. version 범프 전 필수 관문 |
-| `CLAUDE.md.template` | **개발 헌법** (플러그인 외부 배치 필수 — 아래 설치 참조). 자동 라우팅, Karpathy 원칙, 책임 규정, 안전 가드레일 |
+| `CLAUDE.md.template` | **개발 헌법** (플러그인 외부 배치 필수 — 아래 설치 참조). 자동 라우팅, Karpathy 원칙, 산출물 제약 원칙, 책임 규정, 안전 가드레일 |
 
 ---
 
@@ -208,9 +209,9 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 - [ ] D1: PDF 라이브러리 — puppeteer(정확한 렌더링, 무거움) vs pdfkit(가벼움, 레이아웃 수동)
 
 ## Stage 1: 데이터 준비 — 완료 조건: export API가 JSON 반환
-- [ ] 1.1 export 서비스 + 직렬화 유닛테스트 2개 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · verify: 신규 테스트 2개 red→green
-- [ ] 1.2 [P1] 템플릿 컴포넌트 + 렌더 테스트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · verify: 신규 렌더 테스트 red→green + 스토리북 확인
-- [ ] 1.3 [P1] 테스트 픽스처 · 파일: `tests/fixtures/report.ts` (신규) · role: test · tier: light · verify: import 에러 없음
+- [ ] 1.1 export 서비스 + 직렬화 유닛테스트 2개 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · risk: high · verify: 신규 테스트 2개 red→green
+- [ ] 1.2 [P1] 템플릿 컴포넌트 + 렌더 테스트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · risk: normal · verify: 신규 렌더 테스트 red→green + 스토리북 확인
+- [ ] 1.3 [P1] 테스트 픽스처 · 파일: `tests/fixtures/report.ts` (신규) · role: test · tier: light · risk: normal · verify: import 에러 없음
 ```
 
 - **role 태그**: 실행 시 builder에게 해당 전문가 페르소나가 주입된다
@@ -220,6 +221,10 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
   builder-light(haiku), `standard`(그 외 전부)는 builder(sonnet)로 라우팅된다.
   판단이 조금이라도 들어가면 standard, 애매해도 standard — 잘못된 light는
   재시도 비용으로 절감분을 까먹는다. light가 BLOCKED되면 builder로 1회 승급.
+- **risk 태그**: `high`(요구사항에 수치·경계·개수 조건, 보안, 데이터 변형/삭제,
+  동시성 포함) 또는 `normal`(기본). high는 FAIL 여부와 무관하게 **처음부터
+  opus 리뷰어**로 라우팅된다 — 약한 리뷰어가 놓쳐서 PASS시킨 결함은 사후
+  승격(FAIL 시 승격)으로는 잡히지 않기 때문이다. 태그 생략 시 normal.
 - **[P그룹]**: 같은 번호끼리 병렬 실행. 조건: 상호 의존 없음 + 파일 안 겹침.
   동시 최대 3개 (토큰 소모가 병렬 수에 비례). 리뷰는 그룹 완료 후 순차,
   그룹 내 리뷰에서는 NEXT TASK 생략(마지막 리뷰만 포함).
@@ -231,7 +236,7 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 | 파일 | 내용 | 용도 |
 |---|---|---|
 | `PLAN.md` | 뭘 할지 + 체크 상태 | 진행률 파악, 세션 재개 기준점 |
-| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델·tier) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
+| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델·tier·risk) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
 | `PROGRESS.archive.md` | 압축된 stage 블록의 원문 보관소 (stage 종료 시 자동 append) | 추적 가능성 유지, 검증 통계의 과거분 집계. 루프의 어떤 에이전트도 읽지 않는다 |
 | git 커밋 | 태스크당 1커밋 `[plan 1.2] 목표` | 태스크 단위 diff·bisect·롤백 |
 | `ARCHITECTURE.md` + `docs/` | 시스템 현재 상태 (구조·계약·데이터 모델), `docs/decisions/`는 ADR(불변) | builder의 탐색 대체 컨텍스트, 결정 맥락 보존 (docs 스킬 관리) |
@@ -253,8 +258,8 @@ grep -h "^## .* Task" PROGRESS.md PROGRESS.archive.md | grep -c "시도 [2-9]회
 - **30% 초과** → builder 티어가 낮거나 태스크 정의가 모호하다는 신호.
   tier 배분(light 남용 여부)과 PLAN.md 태스크의 verify 구체성을 재검토하라.
 
-리뷰 2단 티어링 도입 후 추가 감시 (승격은 false-FAIL만 교정하므로
-sonnet의 false-PASS는 이 지표로만 잡는다):
+리뷰 2단 티어링 도입 후 추가 감시 (사전 승격이 `risk: high` 태스크의
+false-PASS를 덮지만, normal 태스크의 false-PASS는 여전히 이 지표로만 잡는다):
 - **재시도율이 기존 대비 급락** (예: 5% → 0~2%) → sonnet 리뷰가 느슨하다는
   신호. reviewer 기본 모델을 opus로 되돌려라 (frontmatter 한 줄).
 - **stage-reviewer(opus 유지) FINDINGS 증가** → 태스크 리뷰가 놓친 결함이
@@ -265,6 +270,31 @@ sonnet의 false-PASS는 이 지표로만 잡는다):
 ---
 
 ## 규율 체계
+
+### 규율은 산출물로 강제한다 (헌법 §1)
+리뷰어 감도 실험(같은 모델, 지시문만 교체, 4라운드) 결과: **"무엇을 확인하라"는
+서술형 지침은 반복적으로 무시됐고, "출력의 이 칸을 이런 증거로 채워라, 못 채우면
+실패"라는 산출물 제약은 지켜졌다** (결함 검출 2/4 → 4/4).
+따라서 반드시 지켜져야 하는 검사는 지시문이 아니라 **출력 필드**로 표현한다.
+새 규율을 넣을 때의 자문: 안 지켰을 때 산출물에 빈칸으로 드러나는가?
+드러나지 않으면 그 규율은 강제되지 않는다.
+
+이 원칙의 첫 적용이 reviewer의 **요구사항 추적표**다 (v1.6):
+- reviewer는 VERIFIED 앞에 브리핑의 요구사항을 **한 줄도 빠짐없이** 행으로
+  나열하고 각 행에 충족 증거를 적는다.
+- 수치·경계·길이·개수 조건은 **코드를 읽은 것이 증거가 될 수 없다** —
+  `python -c` 등으로 실제 값을 계산하고 명령과 출력을 그대로 붙인다.
+  부재 판정(미구현)은 grep/diff 결과를 증거로 쓴다.
+- `builder VERIFY에 red→green 기록이 있는가`는 전용 행으로 검사한다.
+- 증거를 못 채운 행이 하나라도 있으면 그 자체로 BLOCKING이고,
+  BLOCKING을 찾아도 표는 끝까지 완성한다(첫 BLOCKING에서 중단 금지).
+
+### 리뷰어 읽기 전용의 실질 (v1.6)
+reviewer/stage-reviewer는 Write/Edit 도구가 없다 — 하지만 도구가 없다고
+읽기 전용이 성립하는 게 아니다. **Bash 경유 수정(sed -i, 리다이렉션, 스크립트
+실행)도 금지**한다. 뮤테이션 검증이 필요하면 파일을 고치지 말고 `python -c`로
+함수를 직접 호출해 값을 확인하거나 리포 사본·git stash 위에서 한다
+(실측상 python -c만으로 동일한 검증이 가능했다).
 
 ### [엄격] / [유연] 분류
 모든 스킬 상단과 헌법 주요 섹션에 규율 강도를 표기한다:
@@ -280,8 +310,9 @@ sonnet의 false-PASS는 이 지표로만 잡는다):
 실패하는 테스트 먼저 작성 → 실패 실제 확인(red) → 통과시키는 최소 코드(green).
 - builder는 VERIFY에 **red→green 두 실행 결과**를 기록해야 하고, 처음부터
   통과하는 테스트는 다시 쓴다 (기존 동작만 검증하고 있다는 신호).
-- reviewer는 red→green 기록·신규 테스트 부재를 BLOCKING(`verify 미충족`)으로
-  판정하고, assert 없는 가짜 테스트도 잡는다.
+- reviewer는 red→green 기록을 **요구사항 추적표의 전용 행**으로 감사하고,
+  신규 테스트 부재를 BLOCKING(`verify 미충족`)으로 판정하며,
+  assert 없는 가짜 테스트도 잡는다.
 - write-plan은 standard 태스크의 verify에 신규/확장 테스트 명시를 요구하고,
   테스트 인프라가 없으면 Stage 1에 셋업 태스크를 넣는다.
 - 예외: tier=light, role=docs, 테스트 인프라 최초 셋업 태스크.
@@ -295,7 +326,7 @@ sonnet의 false-PASS는 이 지표로만 잡는다):
 | 설계 (brainstorming / grill / write-plan — 메인 세션) | fable 권장 | 계획 품질이 루프 전체를 결정 — 여기 아끼면 뒤에서 다 낸다 |
 | 실행 루프 오케스트레이션 (메인 세션) | `/model opus`로 낮추기 권장 | 상태 관리·브리핑 작성 위주, 최고 티어 불필요 |
 | stage-reviewer | 기본 opus, 조건부 fable 승격 | 통합 판정은 보통 opus로 충분. 승격 조건: 인증·결제·데이터 마이그레이션·외부 연동·되돌리기 어려운 변경 포함 stage, 또는 DECISIONS 항목이 구현된 stage. 승격 사유는 PROGRESS.md에 기록 |
-| reviewer | sonnet 1차, FAIL 시 opus 재검증 | 호출의 대다수(실측 95%)가 PASS 확인 — 여기에 opus는 과잉. FAIL일 때만 opus가 재검증해 verdict를 확정한다(오버헤드는 FAIL율만큼만). 승격은 라운드마다 독립 — 수정 후 재검증은 다시 sonnet 기본 호출부터 시작한다(직전 라운드가 opus였어도 opus를 이어 쓰지 않는다). **한계**: 승격은 sonnet의 false-FAIL만 교정하고 false-PASS(결함을 놓치고 통과)는 못 잡는다 — 감시 지표는 아래 재시도율 해석 기준 |
+| reviewer | sonnet 1차, FAIL 시 opus 재검증(사후 승격) · `risk: high` 태스크는 처음부터 opus(사전 승격) | 호출의 대다수(실측 95%)가 PASS 확인 — 여기에 opus는 과잉. FAIL일 때만 opus가 재검증해 verdict를 확정한다(오버헤드는 FAIL율만큼만). 사후 승격은 라운드마다 독립 — 수정 후 재검증은 다시 sonnet 기본 호출부터 시작한다(직전 라운드가 opus였어도 opus를 이어 쓰지 않는다). 사후 승격만으로는 sonnet의 false-PASS(결함을 놓치고 통과)를 못 잡으므로 — 놓친 결함은 FAIL을 내지 않아 승격 자체를 트리거하지 못한다 — 실패 비용이 큰 조건(`risk: high`)은 사전 승격으로 처음부터 opus에 보낸다. 사전 승격은 태스크 속성이라 모든 라운드에서 유지된다 |
 | builder | sonnet (frontmatter 고정) | 태스크 단위 구현 |
 | builder-light | haiku (frontmatter 고정) | 판단 없는 기계적 작업 |
 
@@ -333,6 +364,10 @@ haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 �
   모호하다는 신호. 멈춘 지점의 질문을 보고 완료 조건을 구체화하라.
 - **리뷰어가 너무 깐깐해서 루프가 김** → reviewer.md의 "확신 8/10 미만은
   NON-BLOCKING" 기준을 조정하라.
+- **리뷰 비용이 예상보다 큼** → PLAN.md의 `risk: high` 비율을 보라. 절반을
+  넘으면 태그가 남발된 것이다 (사전 승격 = 처음부터 opus). 판정 기준은
+  "요구사항에 수치·경계·개수 조건, 보안, 데이터 변형/삭제, 동시성이 실제로
+  있는가"이지 "중요해 보이는가"가 아니다.
 - **특정 프로젝트만 계획 승인 후 실행하고 싶음** → 그 프로젝트의 CLAUDE.md에
   "이 프로젝트는 계획 승인 후 실행" 한 줄 추가 (하위가 상위를 덮어씀).
 - **에이전트가 만든 계획이 의도와 자주 어긋남** → dev/CLAUDE.md 라우팅 3번에서

@@ -20,12 +20,12 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   않는다 — 조건 가드("설치되어 있지 않으면 무시") 존재만 확인한다.
 
 ### C) 계약 일치 (생산 ↔ 소비)
-- PLAN.md 형식(stage/task, verify, role, tier, [P], DECISIONS)
-  ↔ execute-plan이 읽는 필드
+- PLAN.md 형식(stage/task, verify, role, tier, risk, [P], DECISIONS)
+  ↔ execute-plan이 읽는 필드 (risk: high → reviewer 사전 승격 라우팅)
 - builder/builder-light 출력(STATUS·CHANGED·VERIFY·NOTES·BLOCKED,
   red→green 기록) ↔ execute-plan·reviewer가 소비하는 필드
-- reviewer 출력(VERDICT·BLOCKING·NON-BLOCKING·VERIFIED·NEXT TASK의
-  role·tier·P그룹) ↔ 소비처
+- reviewer 출력(VERDICT·BLOCKING·NON-BLOCKING·요구사항 추적표·VERIFIED·
+  NEXT TASK의 role·tier·risk·P그룹) ↔ 소비처
 - stage-reviewer 출력(STAGE VERDICT·FINDINGS·PROPOSED TASKS) ↔ 소비처
 
 ### D) 규칙 충돌
