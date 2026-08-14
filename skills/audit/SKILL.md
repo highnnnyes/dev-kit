@@ -24,9 +24,15 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   ↔ execute-plan이 읽는 필드 (risk: high → reviewer 사전 승격 라우팅)
 - builder/builder-light 출력(STATUS·CHANGED·VERIFY·NOTES·BLOCKED,
   red→green 기록) ↔ execute-plan·reviewer가 소비하는 필드
-- reviewer 출력(VERDICT·BLOCKING·NON-BLOCKING·요구사항 추적표·VERIFIED·
-  NEXT TASK의 role·tier·risk·P그룹) ↔ 소비처
-- stage-reviewer 출력(STAGE VERDICT·FINDINGS·PROPOSED TASKS) ↔ 소비처
+- reviewer 출력(VERDICT·BLOCKING·NON-BLOCKING·요구사항 추적표·VERIFIED의
+  실행 명령 전량·NEXT TASK의 role·tier·risk·P그룹) ↔ 소비처
+  (VERIFIED 명령 목록 ↔ PROGRESS.md `- 리뷰명령:` 전재)
+- stage-reviewer 출력(STAGE VERDICT·FINDINGS·PROPOSED TASKS·VERIFIED의
+  실행 명령 전량) ↔ 소비처
+- 직접 처리 태스크 표기(`builder=by=orchestrator`) ↔ stage-reviewer 생략
+  조건 판정(직접 처리 1건 이상이면 생략 무효)
+- 신규 파일 스코프 확보(`git add -N` CHANGED 한정) ↔ 헌법 §4 기본 검증
+  루프와 execute-plan 양쪽에 있는가
 
 ### D) 규칙 충돌
 - 중단 조건 목록·검증 루프 규칙·라우팅 번호 참조가 헌법/커맨드/README에서

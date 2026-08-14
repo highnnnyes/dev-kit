@@ -115,6 +115,10 @@
 의미 있는 코드 변경(또는 PLAN.md의 한 태스크)을 완료하면 반드시:
 
 1. `reviewer` 서브에이전트를 호출한다. 스코프는 **이번에 변경된 파일/diff만**.
+   **호출 직전에 이번 변경 파일 목록으로 한정해 `git add -N <파일들>`을
+   실행한다** — untracked 신규 파일은 `git diff`에 나타나지 않아 리뷰어가
+   신규 테스트를 못 보고 오판한다 (`git add -N .` 금지, reviewer가 직접
+   실행하는 것도 금지 — 읽기 전용 위반). execute-plan 루프와 동일하다.
    기본 호출은 model 파라미터 생략(frontmatter의 sonnet). **FAIL이면
    `model: opus` 파라미터로 1회 재검증**한다 — opus의 verdict가 최종이다
    (PASS로 뒤집히면 통과).
@@ -133,7 +137,8 @@
 
 ### 단계별 자동 진행 (PLAN.md + /write-plan + /execute-plan)
 - 비자명한 기능/설계 작업은 `/write-plan`으로 PLAN.md를 먼저 생성한다
-  (단계 → 5~10분 태스크, 각 태스크에 파일 경로·verify·role/tier/risk 태그 필수).
+  (단계 → verify 하나 단위 태스크 = 테스트 1~2개 + 그 구현(대략 5~10분),
+  각 태스크에 파일 경로·verify·role/tier/risk 태그 필수).
 - 실행은 `/execute-plan`으로: 태스크마다 신선한 `builder` 서브에이전트가 구현하고
   `reviewer`가 검증한다. 메인 에이전트는 오케스트레이터 역할만 하여
   긴 작업에서도 메인 컨텍스트 오염을 방지한다.

@@ -20,7 +20,7 @@
    ↓
 (요구사항 모호 시) brainstorming ──→ DESIGN.md   ← 질문으로 설계 확정
    ↓        (대형/고위험 시) grill: 설계/계획 심문
-/write-plan ──→ PLAN.md               ← stage → 5~10분 태스크, role/tier/risk 태그, [P]병렬 그룹
+/write-plan ──→ PLAN.md               ← stage → verify 하나 단위 태스크, role/tier/risk 태그, [P]병렬 그룹
    ↓ (DECISIONS 없으면 대기 없이)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함)
    │
@@ -52,11 +52,11 @@
 | 파일 | 역할 |
 |---|---|
 | `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, 아키텍처 결정은 DECISIONS로 분리 |
-| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치, 리뷰 루프, stage 경계 통합 검증, 일시정지, 기록 |
+| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치, 리뷰 루프(호출 직전 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), stage 경계 통합 검증, 일시정지, 기록(리뷰 명령 목록·`by=orchestrator` 포함) |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD(red 확인→green) 절차 강제, 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
-| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/risk/[P그룹] 포함) 생성. 읽기 전용은 Bash 경유 수정까지 금지 |
-| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안 |
+| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/risk/[P그룹] 포함) 생성. 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
+| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안. VERIFIED에 실행 명령 전량 기록. **오케스트레이터 직접 처리 태스크가 있는 stage는 생략 조건이 전부 무효** — 그 diff의 유일한 독립 검증층 |
 | `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
@@ -201,6 +201,11 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 
 `/write-plan`이 생성한다. 직접 써도 무방하다.
 
+**태스크의 단위는 시간이 아니라 verify다** — "verify 하나로 통과/실패가 갈리는
+단위 = 신규/확장 테스트 1~2개 + 그 구현"(대략 5~10분). 이 범위를 넘으면 쪼갠다.
+에이전트는 소요 시간을 추정하지 못하지만 "verify 하나"는 산출물로 확인 가능하다 —
+강제되는 기준은 관측 가능한 기준이어야 한다(헌법 §1 산출물 제약).
+
 ```markdown
 # PLAN: PDF 내보내기
 작성: 2026-07-12 · 상태: IN PROGRESS
@@ -236,7 +241,7 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 | 파일 | 내용 | 용도 |
 |---|---|---|
 | `PLAN.md` | 뭘 할지 + 체크 상태 | 진행률 파악, 세션 재개 기준점 |
-| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델·tier·risk) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
+| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델 또는 `by=orchestrator`·tier·risk) + 리뷰어가 실행한 Bash 명령 목록(원문) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
 | `PROGRESS.archive.md` | 압축된 stage 블록의 원문 보관소 (stage 종료 시 자동 append) | 추적 가능성 유지, 검증 통계의 과거분 집계. 루프의 어떤 에이전트도 읽지 않는다 |
 | git 커밋 | 태스크당 1커밋 `[plan 1.2] 목표` | 태스크 단위 diff·bisect·롤백 |
 | `ARCHITECTURE.md` + `docs/` | 시스템 현재 상태 (구조·계약·데이터 모델), `docs/decisions/`는 ADR(불변) | builder의 탐색 대체 컨텍스트, 결정 맥락 보존 (docs 스킬 관리) |
@@ -250,7 +255,14 @@ PROGRESS.md의 구조화 라인은 grep 가능한 계측 데이터다. 루프 �
 
 ```bash
 grep -h "^## .* Task" PROGRESS.md PROGRESS.archive.md | grep -c "시도 [2-9]회"   # 재시도 발생 태스크 수 (압축된 과거분은 archive에)
+grep -c "by=orchestrator" PROGRESS.md PROGRESS.archive.md                        # 독립 검증을 안 거친 태스크 수 (stage-reviewer 생략 판정 근거)
+grep -A1 "^- 리뷰명령:" PROGRESS.md | grep -c "git diff --"                       # 리뷰어가 스코프를 실제로 한정했는지
 ```
+
+v1.7부터 리뷰어가 실행한 Bash 명령이 PROGRESS.md에 원문으로 남는다. 이전에는
+로그 전체에서 `git diff`/`git status` 언급이 5건뿐이라 **리뷰어가 무엇으로
+diff를 봤는지 사후 판별이 불가능했다** — 결함이 있었더라도 관측이 안 되는
+상태였다. 이 목록으로 스코프 준수와 읽기 전용 준수가 동시에 관측된다.
 
 해석 기준 — **재시도율 10~30%가 건강 범위**:
 - **0%에 수렴** → 리뷰어가 형식적으로 통과시키는 중일 가능성. reviewer의
@@ -289,12 +301,33 @@ false-PASS를 덮지만, normal 태스크의 false-PASS는 여전히 이 지표�
 - 증거를 못 채운 행이 하나라도 있으면 그 자체로 BLOCKING이고,
   BLOCKING을 찾아도 표는 끝까지 완성한다(첫 BLOCKING에서 중단 금지).
 
-### 리뷰어 읽기 전용의 실질 (v1.6)
+### 신규 파일 스코프 (v1.7)
+`git diff`는 **untracked 신규 파일을 보여주지 않는다**(실측 재현 확인). PLAN.md
+태스크의 상당수가 `(신규)` 파일이고 TDD 신규 테스트도 대부분 신규 파일이라,
+리뷰어가 지시대로 `git diff`만 보면 신규 테스트를 못 보고 "테스트 없음"으로
+오판하거나 요구사항 추적표의 부재 판정 증거가 거짓이 된다.
+
+→ 오케스트레이터가 reviewer 호출 **직전에** builder의 CHANGED 목록으로 한정해
+`git add -N <파일들>`(intent-to-add)을 실행한다. 실측 확인 사항:
+- intent-to-add 파일은 `git diff`에 전문이 노출된다
+- 다른 파일만 부분 스테이징해 커밋해도 **딸려 들어가지 않는다**(워킹트리에 `A`로 남음)
+- `git add -N .`은 병렬 그룹에서 남의 태스크 파일까지 등록하므로 **금지**
+- `git commit -a`는 딸려 보내므로 기존 금지를 그대로 유지한다
+- 이 명령은 오케스트레이터 전용 — reviewer가 직접 실행하면 읽기 전용 위반이다
+
+### 리뷰어 읽기 전용의 실질 (v1.6~v1.7)
 reviewer/stage-reviewer는 Write/Edit 도구가 없다 — 하지만 도구가 없다고
 읽기 전용이 성립하는 게 아니다. **Bash 경유 수정(sed -i, 리다이렉션, 스크립트
 실행)도 금지**한다. 뮤테이션 검증이 필요하면 파일을 고치지 말고 `python -c`로
 함수를 직접 호출해 값을 확인하거나 리포 사본·git stash 위에서 한다
 (실측상 python -c만으로 동일한 검증이 가능했다).
+
+v1.7에서 이 규율에 **관측 수단**을 붙였다: 리뷰어는 VERIFIED에 실행한 Bash
+명령을 전량 원문으로 나열하고, 오케스트레이터가 그 목록을 PROGRESS.md에 그대로
+옮긴다. 파일을 수정하는 명령이 목록에 있으면 리뷰 결과와 무관하게 규칙 위반으로
+보고된다. 규율(v1.6)만 있고 산출물 칸(v1.7)이 없던 동안은 준수 여부를 확인할
+방법이 없었다 — 헌법 §1이 말하는 "빈칸으로 드러나지 않으면 강제되지 않는다"의
+자기 사례다.
 
 ### [엄격] / [유연] 분류
 모든 스킬 상단과 헌법 주요 섹션에 규율 강도를 표기한다:
@@ -352,6 +385,8 @@ haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 �
 - 병렬 동시 상한 3
 - 브리핑은 자족적 최소한으로 — 프로젝트 전체 맥락 주입 금지
 - 리뷰어 스코프는 해당 태스크 diff만
+- 리뷰 명령 목록(v1.7)은 PROGRESS.md를 키우지만 stage 종료 시 롤링 요약이
+  압축한다 — 요약 라인에는 명령 목록을 흡수하지 않고 archive에만 남긴다
 - role 페르소나는 write-plan이 PLAN.md `## ROLES`에 1회 생성 — 브리핑은 복사만
 - stage 경계 세션 재시작 권고 — 롤링 요약 후 새 세션 재개로 메인 컨텍스트
   리셋 (PLAN/PROGRESS 기반 재개는 무손실)
