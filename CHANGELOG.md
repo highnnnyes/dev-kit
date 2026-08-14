@@ -3,6 +3,28 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.8.0 — 2026-08-14
+파괴 방어를 3층으로 구성: 지시문(관측) → 훅(차단) → 환경 권한(보증).
+E-1(파괴적 명령 준수가 산출물에 무흔적)의 해소를 겸한다.
+
+- **PreToolUse 훅 신규** (`hooks/hooks.json` + `hooks/block-destructive.sh`):
+  matcher=Bash. DROP SCHEMA/DATABASE/TABLE·TRUNCATE·`delete … where 1=1`·
+  dropdb·pg_restore·`docker compose down -v`·`docker volume rm`·`rm -rf`·
+  `git reset --hard`·`git push --force`를 `permissionDecision: deny`로 차단.
+  프로젝트 루트 `.dev-kit-allow-destructive`에 패턴 ID를 적으면 예외
+  (git 추적 필수, 적용 시 stderr에 흔적). 파서(jq→python3) 부재·깨진 입력·
+  예외 상황은 전부 exit 0(fail open)이라 훅이 루프를 죽이지 않는다.
+  스크래치 실측: 차단 15/15, 통과 7/7, 예외 파일·주석 처리·fail open 확인.
+- **skills/harden 신규** [엄격]: L1 DB 권한 → L4 백업 → L5 dev/prod 격리
+  8개 항목 점검표. **각 항목은 증거 칸을 채워야 완료**(증거 없는 "설정함"은
+  미완료). 결과는 HARDENING.md. write-plan은 DB가 있는데 HARDENING.md가
+  없으면 Stage 1에 harden 태스크(risk: high)를 심는다. 헌법 §4 자동 라우팅에
+  6번 항목으로 추가(기존 "사소한 작업"은 7번으로 이동).
+- **builder/builder-light 출력에 DESTRUCTIVE 행**: 실행한 파괴적·비가역
+  명령 전부 + 사용자 확인 여부, 없으면 "없음" 명시(빈칸이면 출력 미충족).
+  reviewer가 검사 항목으로 감사(확인 없이 실행 → BLOCKING, 유형 `보안`),
+  execute-plan이 PROGRESS.md `- 파괴적명령:`으로 전재.
+
 ## v1.7.0 — 2026-08-14
 v1.6 산출물 제약 원칙의 후속 적용 4종. 계기: 실사용 로그 160태스크에서
 리뷰어가 무엇으로 diff를 봤는지 판별 불가(`git diff`/`git status` 언급 5건)

@@ -116,6 +116,7 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
      - 리뷰명령: [reviewer VERIFIED의 Bash 명령 목록을 **그대로** 옮겨 적는다 —
        요약·축약 금지. 계측이 로그에 남아야 스코프 준수와 읽기 전용 준수를
        사후 검증할 수 있다]
+     - 파괴적명령: [builder DESTRUCTIVE 행을 그대로 전재 — "없음"도 그대로 적는다]
      - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|기타)]
      - 넘김: [builder NOTES / reviewer NON-BLOCKING]
      ```

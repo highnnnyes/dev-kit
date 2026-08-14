@@ -61,6 +61,8 @@
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
 | `skills/debugging/` | 버그·테스트 실패·예상 밖 동작 시 근본 원인 조사 강제 [엄격]. 재현→격리→역추적→수정+다층 방어 4단계, 종료 조건(재현 테스트 green + 원인 한 문장 설명). 헌법 §5 Iron Law의 실행 절차 |
+| `hooks/block-destructive.sh` + `hooks/hooks.json` | **PreToolUse 훅** (matcher: Bash). 파괴적 명령(DROP/TRUNCATE/`delete ... where 1=1`/dropdb/pg_restore/`docker compose down -v`/`docker volume rm`/`rm -rf`/`git reset --hard`/`git push --force`(`-f`·`--force-with-lease` 포함))을 `permissionDecision: deny`로 차단. 프로젝트 루트 `.dev-kit-allow-destructive`로 패턴별 예외(git 추적 필수·stderr에 흔적). 파서 없음·깨진 입력이면 통과(fail open) |
+| `skills/harden/` | 환경 하드닝 [엄격]. L1 DB 권한(앱 계정 DDL 제거·마이그레이션 계정 분리) → L4 백업(스케줄·오프사이트·복원 훈련·실패 알림) → L5 격리(dev/prod 이름 분리·복원 스크립트 안전화). **각 항목은 증거 칸을 채워야 완료**, 결과는 HARDENING.md |
 | `skills/audit/` | dev-kit 리포 자체 정합성 감사 [엄격, 읽기 전용]. 인벤토리→참조 정합성→계약 일치→규칙 충돌→에이전트 권한→스킬 연동→README 정확성 검사. version 범프 전 필수 관문 |
 | `CLAUDE.md.template` | **개발 헌법** (플러그인 외부 배치 필수 — 아래 설치 참조). 자동 라우팅, Karpathy 원칙, 산출물 제약 원칙, 책임 규정, 안전 가드레일 |
 
@@ -148,6 +150,7 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 | 진행 계속 | PLAN.md에 미완료 태스크 + "진행해" 류 | 미완료 지점부터 자동 재개 |
 | 문서 요청 | 아키텍처 문서, API 명세, ERD, ADR, "문서 검사" | docs 스킬: drift 스캔 → 갱신/작성 |
 | 버그/오동작 | 버그 수정, 테스트 실패, 예상 밖 동작 | debugging 스킬: 재현→격리→역추적→수정 (조사 없이 수정 없음) |
+| 환경 안전 | DB·볼륨·배포 도입, "안전 점검해줘" | harden 스킬: L1 권한 → L4 백업 → L5 격리, 증거 필수 |
 | 사소한 작업 | 한 파일, 자명한 수정 | 계획 없이 처리 + 리뷰만 |
 
 애매하면 계획 생성 쪽으로 분류된다 (계획 과잉이 무계획보다 싸다).
@@ -300,6 +303,27 @@ false-PASS를 덮지만, normal 태스크의 false-PASS는 여전히 이 지표�
 - `builder VERIFY에 red→green 기록이 있는가`는 전용 행으로 검사한다.
 - 증거를 못 채운 행이 하나라도 있으면 그 자체로 BLOCKING이고,
   BLOCKING을 찾아도 표는 끝까지 완성한다(첫 BLOCKING에서 중단 금지).
+
+### 파괴 방어 3층 (v1.8)
+파괴 사고를 막는 층은 셋이고 **아래로 갈수록 강하다**:
+
+| 층 | 수단 | 뚫리는 지점 |
+|---|---|---|
+| 1. 지시문 | 헌법 §5 가드레일 + builder DESTRUCTIVE 행 | 모델이 무시하면 끝 (그래서 산출물 칸으로 관측만 확보) |
+| 2. 훅 | `hooks/block-destructive.sh` (PreToolUse deny) | **문자열 매칭이라 `.sql` 파일 경유·변수 조립으로 우회 가능** |
+| 3. 환경 | harden 스킬 L1 (DB 권한) | 권한이 없으면 실행 자체가 불가능 — 최종 보증 |
+
+훅은 심층방어의 한 겹일 뿐 보증이 아니다. **DB가 있는 프로젝트는 harden L1을
+먼저 한다** (write-plan이 HARDENING.md 없으면 Stage 1에 태스크를 심는다).
+
+훅의 알려진 한계와 설계 선택:
+- `psql -f reset.sql`처럼 파일 경유하면 매칭되지 않는다
+- `CMD="drop table x"; psql -c "$CMD"`처럼 변수 조립하면 매칭되지 않는다
+- 반대로 SQL 키워드가 문자열로 들어간 `git commit -m "drop table 지원"`은
+  오탐이라, 파이프·연결(`| ; &`)이 없는 단독 `git commit`/`git log`/`echo`/
+  `printf`는 예외 처리했다 (DB에 도달할 수 없는 명령이므로)
+- 상시 허용이 필요하면 `.dev-kit-allow-destructive`에 패턴 ID를 적는다.
+  이 파일은 **`.gitignore` 금지** — git에 추적돼야 리뷰에서 보인다
 
 ### 신규 파일 스코프 (v1.7)
 `git diff`는 **untracked 신규 파일을 보여주지 않는다**(실측 재현 확인). PLAN.md

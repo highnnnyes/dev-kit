@@ -33,6 +33,13 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   조건 판정(직접 처리 1건 이상이면 생략 무효)
 - 신규 파일 스코프 확보(`git add -N` CHANGED 한정) ↔ 헌법 §4 기본 검증
   루프와 execute-plan 양쪽에 있는가
+- builder/builder-light 출력 `DESTRUCTIVE` 행 ↔ reviewer 검사 항목 ↔
+  execute-plan PROGRESS `- 파괴적명령:` 전재 (생산·감사·기록 3자 일치)
+- 훅: `hooks/hooks.json`이 실재하고 스크립트 경로(`${CLAUDE_PLUGIN_ROOT}`
+  기준)·실행 권한이 맞는가, README의 차단 패턴 목록이 스크립트 실제
+  패턴과 일치하는가, fail open(exit 0)이 유지되는가
+- harden 스킬 ↔ 헌법 §4 라우팅 항목 ↔ write-plan Stage 1 harden 태스크
+  규정이 서로를 가리키는가
 
 ### D) 규칙 충돌
 - 중단 조건 목록·검증 루프 규칙·라우팅 번호 참조가 헌법/커맨드/README에서
