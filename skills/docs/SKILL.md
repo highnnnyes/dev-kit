@@ -87,6 +87,9 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
    - [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · risk: normal · verify: drift 스캔 통과
    ```
    구조 변경 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉.
+   문서 태스크에 **프로젝트 CLAUDE.md 갱신 항목이 있으면 반드시 stage
+   마지막 태스크로 배치한다** — CLAUDE.md는 서브에이전트 캐시 접두사라
+   중간 수정 시 남은 태스크의 캐시가 전부 깨진다 (write-plan 분해 원칙 8).
 2. **DECISIONS → ADR 파이프**: write-plan의 DECISIONS에서 사용자가
    결정을 내리면, 그 결정+근거를 `docs/decisions/`에 ADR로 자동 기록.
    결정의 맥락이 채팅에서 증발하는 걸 막는다.

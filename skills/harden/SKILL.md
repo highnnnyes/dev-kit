@@ -66,6 +66,10 @@ description: 프로젝트에 DB·볼륨·외부 상태가 있을 때 파괴 사�
   **Stage 1에 harden 태스크를 넣는다**
   (`role: infra · tier: standard · risk: high · verify: HARDENING.md의 증거 칸 전부 충족`).
   risk: high인 이유는 데이터 변형/삭제 영역이기 때문이다 — 리뷰는 사전 승격된다.
+  하드닝 조치에 **프로젝트 CLAUDE.md 갱신 항목이 포함되면(예: `worktree:`
+  선언 추가) 그 항목은 stage 마지막 태스크로 배치한다** — CLAUDE.md는
+  서브에이전트 캐시 접두사라 중간 수정 시 남은 태스크의 캐시가 전부 깨진다
+  (write-plan 분해 원칙 8).
 - **자동 라우팅** (헌법 §4): DB·볼륨·배포 등 파괴 위험 환경을 새로 도입하거나
   사용자가 안전 점검을 요청하면 이 스킬을 적용한다.
 - **훅과의 관계**: `hooks/block-destructive.sh`는 이 스킬의 대체재가 아니다.

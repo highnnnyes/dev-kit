@@ -54,6 +54,8 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   이 블록을 읽도록 돼 있는가
 - harden 스킬 ↔ 헌법 §4 라우팅 항목 ↔ write-plan Stage 1 harden 태스크
   규정(HARDENING.md 부재 검사)이 서로를 가리키는가
+- CLAUDE.md 수정 태스크가 stage 말미에 배치되는 규칙(캐시 접두사 보존)이
+  write-plan·execute-plan·docs·harden 네 곳에서 일치하는가
 
 ### D) 규칙 충돌
 - 중단 조건 목록·검증 루프 규칙·라우팅 번호 참조가 헌법/커맨드/README에서
