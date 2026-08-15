@@ -5,7 +5,7 @@
     {
       "name": "dev-kit",
       "source": "./",
-      "description": "Plan-driven autonomous dev loop: write-plan/execute-plan + tier-routed builders (builder/builder-light) with TDD enforcement + independent reviewer per task + stage-reviewer integration review, plus brainstorming/grill/docs/debugging skills and repo self-audit."
+      "description": "Plan-driven autonomous dev loop: write-plan/execute-plan + tier-routed builders (builder/builder-light) with TDD enforcement + independent reviewer per task + stage-reviewer integration review, worktree-isolated parallel groups with a post-merge verify gate, destructive-command + revert-category + out-of-scope-write deny hooks, RESUME checkpoints (PreCompact flush), plus brainstorming/grill/docs/debugging/harden skills and repo self-audit."
     }
   ]
 }

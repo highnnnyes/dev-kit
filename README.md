@@ -52,7 +52,7 @@
 | 파일 | 역할 |
 |---|---|
 | `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, 아키텍처 결정은 DECISIONS로 분리 |
-| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치, 리뷰 루프(호출 직전 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), stage 경계 통합 검증, 일시정지, 기록(리뷰 명령 목록·`by=orchestrator` 포함) |
+| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(호출 직전 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증, **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator` 포함) |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD(red 확인→green) 절차 강제, 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
 | `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/risk/[P그룹] 포함) 생성. 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
@@ -61,7 +61,8 @@
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
 | `skills/debugging/` | 버그·테스트 실패·예상 밖 동작 시 근본 원인 조사 강제 [엄격]. 재현→격리→역추적→수정+다층 방어 4단계, 종료 조건(재현 테스트 green + 원인 한 문장 설명). 헌법 §5 Iron Law의 실행 절차 |
-| `hooks/block-destructive.sh` + `hooks/hooks.json` | **PreToolUse 훅** (matcher: Bash). 파괴적 명령(DROP/TRUNCATE/`delete ... where 1=1`/dropdb/pg_restore/`docker compose down -v`/`docker volume rm`/`rm -rf`/`git reset --hard`/`git push --force`(`-f`·`--force-with-lease` 포함))을 `permissionDecision: deny`로 차단. 프로젝트 루트 `.dev-kit-allow-destructive`로 패턴별 예외(git 추적 필수·stderr에 흔적). 파서 없음·깨진 입력이면 통과(fail open) |
+| `hooks/block-destructive.sh` + `hooks/hooks.json` | **PreToolUse 훅** (matcher: Bash\|Edit\|Write). ① 데이터 파괴 명령(DROP/TRUNCATE/`delete ... where 1=1`/dropdb/pg_restore/`docker compose down -v`/`docker volume rm`/`rm -rf`/`git reset --hard`/`git push --force`(`-f`·`--force-with-lease` 포함)) 차단. ② **되돌리기 범주 전면 차단** — `git checkout <경로>`(브랜치 전환·`-b`는 허용)/`git restore`/`git clean`/`git stash`(list·show 제외)/`git rm`/`git branch -D`(`-d`는 허용)/`git reflog expire`. ③ **스코프 밖 쓰기 차단** — Edit/Write의 file_path가 `.dev-kit-scope` 목록에 없으면 deny(파일 없으면 검사 생략). 프로젝트 루트 `.dev-kit-allow-destructive`로 패턴별 예외(git 추적 필수·stderr에 흔적). 파서 없음·깨진 입력이면 통과(fail open) |
+| `hooks/precompact-resume.sh` | **PreCompact 훅**. 컨텍스트 자동 압축 직전 PROGRESS.md 최상단의 RESUME 블록을 기계적으로 갱신(다음 태스크·미결 DECISIONS·base sha·워크트리·마지막 커밋) — 압축으로 컨텍스트를 잃기 전 디스크로 flush하는 안전망. PLAN.md+PROGRESS.md 있는 프로젝트에서만 동작, 실패 시 무조건 exit 0 |
 | `skills/harden/` | 환경 하드닝 [엄격]. L1 DB 권한(앱 계정 DDL 제거·마이그레이션 계정 분리) → L4 백업(스케줄·오프사이트·복원 훈련·실패 알림) → L5 격리(dev/prod 이름 분리·복원 스크립트 안전화). **각 항목은 증거 칸을 채워야 완료**, 결과는 HARDENING.md |
 | `skills/audit/` | dev-kit 리포 자체 정합성 감사 [엄격, 읽기 전용]. 인벤토리→참조 정합성→계약 일치→규칙 충돌→에이전트 권한→스킬 연동→README 정확성 검사. version 범프 전 필수 관문 |
 | `CLAUDE.md.template` | **개발 헌법** (플러그인 외부 배치 필수 — 아래 설치 참조). 자동 라우팅, Karpathy 원칙, 산출물 제약 원칙, 책임 규정, 안전 가드레일 |
@@ -164,7 +165,10 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
    배포 등은 항상 확인. 다음 태스크의 요구사항이 불명확할 때도 멈춘다
 5. **stage-reviewer 2회 연속 FAIL** — stage 통합 검증이 보완 후 재검증에도 실패하면 중단·보고
 6. **일시정지** — `.dev-kit-pause` 파일 존재 시 태스크 경계에서 안전 정지 (아래 참조)
-7. **사용자 중단 지시**
+7. **워크트리 그룹 머지 충돌 / 통합검증 2회 연속 실패** — 충돌은 [P] 그룹
+   편성 오류 신호라 즉시 중단·보고, 머지 후 통합검증은 보완 태스크로 1회
+   재시도 후에도 실패하면 중단
+8. **사용자 중단 지시**
 
 ### 실행 중 개입
 
@@ -233,9 +237,14 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
   동시성 포함) 또는 `normal`(기본). high는 FAIL 여부와 무관하게 **처음부터
   opus 리뷰어**로 라우팅된다 — 약한 리뷰어가 놓쳐서 PASS시킨 결함은 사후
   승격(FAIL 시 승격)으로는 잡히지 않기 때문이다. 태그 생략 시 normal.
-- **[P그룹]**: 같은 번호끼리 병렬 실행. 조건: 상호 의존 없음 + 파일 안 겹침.
-  동시 최대 3개 (토큰 소모가 병렬 수에 비례). 리뷰는 그룹 완료 후 순차,
-  그룹 내 리뷰에서는 NEXT TASK 생략(마지막 리뷰만 포함).
+- **[P그룹]**: 같은 번호끼리 병렬 실행 — 단 프로젝트에 `worktree:` 선언
+  (shared-env|isolated-env)이 있을 때만 실제로 병렬(워크트리 격리)이고,
+  없으면/off면 순차 강등된다. 조건: 상호 의존 없음 + 파일 안 겹침 +
+  **네임스페이스 안 겹침**(마이그레이션 버전·라우트·설정 키·픽스처 이름·DI
+  등록명) + 의존성 변경 태스크 아님. 동시 최대 3개 (토큰 소모가 병렬 수에
+  비례). 리뷰는 각 워크트리 안에서 태스크별 수행, 그룹 내 리뷰에서는
+  NEXT TASK 생략(마지막 리뷰만 포함). 그룹 머지 후 통합 검증 게이트 통과
+  시에만 다음으로 (위 "워크트리 격리" 참조).
 
 ---
 
@@ -325,6 +334,90 @@ false-PASS를 덮지만, normal 태스크의 false-PASS는 여전히 이 지표�
 - 상시 허용이 필요하면 `.dev-kit-allow-destructive`에 패턴 ID를 적는다.
   이 파일은 **`.gitignore` 금지** — git에 추적돼야 리뷰에서 보인다
 
+**되돌리기 범주 (v1.8.1)** — 세 실사고 중 두 번째(문서 태스크 에이전트가
+`git checkout tests/...`로 병렬 태스크의 미커밋 산출물 파괴)의 직접 대응.
+이것은 목록 나열이 아니라 **"미커밋 작업을 없애거나 워킹트리를 되돌리는 모든
+명령"이라는 범주**다 — 변종이 나오면 범주 기준으로 판단해 스크립트에 추가한다.
+`git checkout`/`git restore`/`git clean`/`git stash`/`git rm`/`git branch -D`/
+`git reflog expire`가 현재 표면이고, 전부 **확인이 아니라 전면 금지**다
+(복구는 사용자 몫). 오탐 방지 설계 — 워크트리 격리가 브랜치 조작에 의존하므로
+이 구분이 정확해야 한다:
+- `git checkout -b`(생성)·`git checkout <브랜치>`(전환)는 허용 — **경로 인자가
+  있는 형태만** 차단한다. 판별은 인자의 파일 실존 검사(cwd 기준)로 한다.
+  알려진 한계: 워킹트리에서 이미 삭제된 파일의 checkout은 `--` 없이 쓰면
+  실존 검사를 통과한다.
+- `git branch -d`(머지 확인 삭제)·`git stash list/show`·`git worktree
+  add/remove/prune`은 허용 (실측 49케이스로 차단·오탐 양방향 검증).
+
+**스코프 밖 쓰기 차단 (v1.8.1)** — 세 번째 실사고(reviewer의 읽기 전용 위반)
+대응의 기계층. 오케스트레이터가 디스패치 직전 `.dev-kit-scope`에 대상 파일
+목록을 쓰면, 훅이 목록 밖 Edit/Write를 deny한다(파일 없으면 검사 생략 —
+수동 세션 대응). **한계: 동시 디스패치된 태스크 간 교차는 이 방식으로 못
+막는다** — 둘 다 목록에 있기 때문이다. 그 층은 워크트리 격리(아래)가 담당한다.
+
+**역할 분담 — 훅이 막고, DESTRUCTIVE 행이 계측한다.** 산출물 강제(builder의
+DESTRUCTIVE 행)만으로는 사고를 막지 못한다 — 드러나는 시점이 이미 파괴 후다.
+차단은 훅(1.5층), 관측·감사는 DESTRUCTIVE 행(1층), 최종 보증은 권한(3층)이다.
+
+### 워크트리 격리 (v1.8.1)
+
+[P] 병렬 그룹을 태스크마다 전용 git worktree에서 실행해 **물리적으로**
+격리한다 — 마크다운 규칙이 세 번 못 막은 것을 파일시스템이 막는다.
+병렬 태스크가 서로의 미커밋 산출물을 건드릴 방법 자체가 없어진다.
+
+프로젝트 CLAUDE.md에 선언해야 켜진다 (없으면 `off`):
+
+```
+worktree: shared-env | isolated-env | off
+worktree-env-setup: <각 워크트리에서 실행할 준비 명령>
+```
+
+- `shared-env` — 메인 트리의 의존성 환경 재사용
+  (예: uv면 `export UV_PROJECT_ENVIRONMENT=<메인트리>/.venv`)
+- `isolated-env` — 워크트리마다 설치 (`worktree-env-setup`에 설치 명령)
+- `off`(기본) — [P] 그룹을 **순차 실행으로 강등**. off가 기본인 이유:
+  환경 공유 가능 여부는 스택마다 다르고, 잘못 켜면 의존성 없는 워크트리에서
+  verify가 거짓 실패한다.
+
+핵심 규칙 (상세: `commands/execute-plan.md`):
+- 위치는 반드시 `<dev 루트>/.worktrees/<project>/<task-id>` — dev 루트 아래여야
+  공통 헌법이 상속된다. `/tmp`에 만들면 에이전트가 규칙 없이 돈다.
+  브랜치는 `wt/<task-id>`, 수명은 [P] 그룹 단위(끝나면 머지 후 즉시 제거 —
+  살아 있을수록 충돌이 커진다). `.worktrees/`는 dev 루트 `.gitignore`에.
+- PLAN.md·PROGRESS.md는 메인 트리 소유 — 워크트리 태스크는 읽지도 쓰지도
+  않는다 (건드리면 머지마다 충돌한다). reviewer는 워크트리 안에서
+  `git diff HEAD~1`로 리뷰 — 남의 변경이 물리적으로 없어 스코프 자동 보장.
+- **머지 후 통합 검증 게이트**: 워크트리 격리의 구조적 대가는 verify가 격리
+  상태에서만 도는 것이다 — A도 통과, B도 통과했는데 **머지된 결과는 아무도
+  검증하지 않은 상태**가 된다. 그래서 그룹 머지 직후 모든 태스크의 verify를
+  메인 트리에서 재실행한다(오케스트레이터 직접 실행, 모델 호출 없음 — 비용은
+  테스트 시간뿐. 그룹 크기 1이면 생략). 실패 시 워크트리 보존 + 보완 태스크,
+  2회 연속 실패 시 중단·보고.
+- write-plan의 [P] 편성 조건도 강화됐다: 파일 비중첩만으로는 부족하고,
+  **같은 네임스페이스**(마이그레이션 버전 번호, 라우트 경로, 설정 키, 픽스처
+  이름, DI 등록명)를 공유하면 [P] 금지. 의존성 변경 태스크도 [P] 금지
+  (shared-env 동시 설치 경합).
+- 정리 실패는 루프를 멈추지 않는다 — 경고 후 진행, 다음 실행 시작 시
+  `git worktree prune`이 회수. BLOCKED·통합 실패 태스크의 워크트리는
+  보존하고 경로를 보고에 포함한다.
+
+### 세션 체크포인트 (v1.8.1)
+
+- **RESUME 블록**: stage 완료 시·루프 중단 시 오케스트레이터가 PROGRESS.md
+  최상단에 갱신한다 — 다음 태스크, 미결 DECISIONS, 누적 NON-BLOCKING,
+  stage base sha·남은 워크트리, 마지막 커밋 sha. 새 세션은 PROGRESS 전체를
+  훑지 않고 이 블록만 읽고 재개한다.
+- **PreCompact 훅**: 컨텍스트 자동 압축 직전 같은 블록을 기계적으로 갱신한다
+  (셸에서 수집 가능한 필드만) — 압축으로 컨텍스트를 잃기 전 디스크로 flush하는
+  안전망. PreCompact는 컨텍스트 주입이 불가능하고 부수 효과만 가능하므로
+  (공식 문서 확인) 디스크 flush가 유일한 안전망 형태다.
+- **dev-kit에서는 `/compact`보다 `/clear`가 낫다.** 진행 상태가 전부 파일
+  (PLAN.md·PROGRESS.md·커밋)에 있으므로, 압축 요약은 이미 디스크에 있는
+  정보를 토큰을 써서 다시 만드는 것이다. 긴 세션은 비용뿐 아니라 규칙 준수도
+  저하시킨다(CLAUDE.md 규칙의 우선순위가 대화 길이에 밀린다). stage 완료
+  시점에 컨텍스트 사용률이 높으면 오케스트레이터가 "`/clear` 후 '진행해'로
+  재개"를 권고한다.
+
 ### 신규 파일 스코프 (v1.7)
 `git diff`는 **untracked 신규 파일을 보여주지 않는다**(실측 재현 확인). PLAN.md
 태스크의 상당수가 `(신규)` 파일이고 TDD 신규 테스트도 대부분 신규 파일이라,
@@ -336,7 +429,7 @@ false-PASS를 덮지만, normal 태스크의 false-PASS는 여전히 이 지표�
 - intent-to-add 파일은 `git diff`에 전문이 노출된다
 - 다른 파일만 부분 스테이징해 커밋해도 **딸려 들어가지 않는다**(워킹트리에 `A`로 남음)
 - `git add -N .`은 병렬 그룹에서 남의 태스크 파일까지 등록하므로 **금지**
-- `git commit -a`는 딸려 보내므로 기존 금지를 그대로 유지한다
+- `git commit -a`는 딸려 보내므로 금지 — 커밋은 CHANGED 한정 `git add`로만
 - 이 명령은 오케스트레이터 전용 — reviewer가 직접 실행하면 읽기 전용 위반이다
 
 ### 리뷰어 읽기 전용의 실질 (v1.6~v1.7)

@@ -3,6 +3,44 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.8.1 — 2026-08-15
+v1.8 2차분 — 격리·차단·체크포인트. 원칙: **규칙이 아니라 기계적 장치로 막는다**
+(세 실사고 — DB 전소·병렬 산출물 checkout 파괴·리뷰어 읽기 전용 위반 — 전부
+마크다운 규칙이 못 막았다). 1차분(1.8.0: 데이터 파괴 훅·harden·DESTRUCTIVE 행)이
+이미 배포돼 있어 버전만 1.8.1로 진행한다.
+
+- **훅 되돌리기 범주 신설** (`block-destructive.sh`): "미커밋 작업을 없애거나
+  워킹트리를 되돌리는 모든 명령" 범주 — `git checkout <경로>`/`git restore`/
+  `git clean`/`git stash`(list·show 제외)/`git rm`/`git branch -D`(-d 허용)/
+  `git reflog expire`를 전면 deny(확인 아님 — 복구는 사용자 몫). 오탐 방지:
+  `git checkout -b`·브랜치 전환은 허용 — 인자 파일 실존 검사로 경로 checkout만
+  판별(워크트리가 브랜치 조작에 의존하므로 필수). 실측 49케이스 전부 통과.
+- **스코프 밖 쓰기 차단** (matcher Bash → Bash|Edit|Write): 오케스트레이터가
+  디스패치 직전 `.dev-kit-scope`에 대상 파일 목록을 쓰고, 훅이 목록 밖
+  Edit/Write를 deny. 파일 없으면 검사 생략(수동 세션). 한계: 동시 디스패치
+  태스크 간 교차는 못 막음(둘 다 목록에 있음) — 그 층은 워크트리가 담당.
+- **워크트리 격리** (execute-plan·write-plan·헌법): [P] 그룹을 태스크별
+  `<dev 루트>/.worktrees/<project>/<task-id>` + `wt/<task-id>` 브랜치에서 물리
+  격리 실행. 프로젝트 CLAUDE.md `worktree: shared-env|isolated-env|off` 선언제
+  (기본 off — [P] 순차 강등). PLAN/PROGRESS는 메인 트리 소유(워크트리 접근
+  금지 → 머지 무충돌 실측). reviewer는 워크트리 안 `git diff HEAD~1` — 스코프
+  자동 보장. **머지 후 통합 검증 게이트**: 그룹 머지 직후 전 태스크 verify를
+  메인 트리에서 재실행(오케스트레이터 직접, 모델 호출 없음. 그룹 크기 1 생략,
+  2연속 실패 시 중단). write-plan [P] 금지 조건 신설: 의존성 변경·네임스페이스
+  공유(마이그레이션 버전·라우트·설정 키·픽스처·DI 등록명). 정리 실패 내성
+  (경고 후 진행 + 시작 시 prune) 실측 16케이스 전부 통과.
+- **세션 체크포인트**: stage 완료·루프 중단 시 PROGRESS.md 최상단 RESUME 블록
+  (다음 태스크·미결 DECISIONS·누적 NON-BLOCKING·base sha·워크트리·마지막 커밋).
+  **PreCompact 훅 신규**(`precompact-resume.sh`): 자동 압축 직전 같은 블록을
+  기계적으로 flush(PreCompact는 컨텍스트 주입 불가·부수 효과만 가능 — 공식
+  문서 확인). 재개 절차가 이 블록을 우선 읽음. README에 `/clear` > `/compact`
+  근거 명시.
+- **헌법 §5 재구성**: 파괴 명령을 데이터 파괴(확인)·되돌리기(전면 금지) 2범주로
+  분리, 초기화 원칙("데이터를 지우는 방식으로 환경을 초기화하지 마라") 추가,
+  역할 분담 명시(규칙=관측·설명, 훅=강제, 권한=최종 보증). §4에 워크트리 요약.
+- audit C 계약 8종 추가(훅 2종 등록·scope 생산/소비·worktree 라우팅·B-5 게이트·
+  base sha 3자·RESUME 2원·harden 라우팅).
+
 ## v1.8.0 — 2026-08-14
 파괴 방어를 3층으로 구성: 지시문(관측) → 훅(차단) → 환경 권한(보증).
 E-1(파괴적 명령 준수가 산출물에 무흔적)의 해소를 겸한다.

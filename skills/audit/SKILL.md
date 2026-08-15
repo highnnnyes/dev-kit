@@ -35,11 +35,25 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   루프와 execute-plan 양쪽에 있는가
 - builder/builder-light 출력 `DESTRUCTIVE` 행 ↔ reviewer 검사 항목 ↔
   execute-plan PROGRESS `- 파괴적명령:` 전재 (생산·감사·기록 3자 일치)
-- 훅: `hooks/hooks.json`이 실재하고 스크립트 경로(`${CLAUDE_PLUGIN_ROOT}`
-  기준)·실행 권한이 맞는가, README의 차단 패턴 목록이 스크립트 실제
-  패턴과 일치하는가, fail open(exit 0)이 유지되는가
+- 훅: `hooks/hooks.json`이 실재하고 **PreToolUse(block-destructive.sh,
+  matcher Bash|Edit|Write)·PreCompact(precompact-resume.sh) 양쪽**이 등록돼
+  있는가, 스크립트 경로(`${CLAUDE_PLUGIN_ROOT}` 기준)·실행 권한이 맞는가,
+  README의 차단 패턴 목록(되돌리기 범주 포함)이 스크립트 실제 패턴과
+  일치하는가, fail open(exit 0)이 유지되는가
+- `.dev-kit-scope` 생산(execute-plan: 디스패치 직전 생성·반환 직후 삭제)
+  ↔ 소비(훅의 Edit/Write 스코프 검사) — 파일명·형식(한 줄에 경로 하나)이
+  양쪽에서 일치하는가
+- `worktree:` 선언(shared-env|isolated-env|off) ↔ execute-plan 병렬 라우팅
+  ↔ off/선언 없음 시 순차 강등 폴백 ↔ 헌법 §4 요약 — 값 이름이 일치하는가
+- B-5 머지 후 통합 검증 게이트(그룹 머지 직후 verify 재실행, 그룹 크기 1
+  생략) ↔ PROGRESS `Group <id> 머지 후 통합검증` 기록 형식
+- `Stage N 시작 — base=<sha>` 기록(execute-plan) ↔ stage-reviewer 통합 diff
+  스코프(`<시작 sha>..HEAD`) ↔ PreCompact 훅의 base sha 추출 패턴
+- RESUME 블록 생산 2원(execute-plan stage 경계·중단 시 ↔ PreCompact 훅) —
+  형식(`## RESUME` + 5개 필드)이 일치하는가, 재개 절차(사전 체크 2)가
+  이 블록을 읽도록 돼 있는가
 - harden 스킬 ↔ 헌법 §4 라우팅 항목 ↔ write-plan Stage 1 harden 태스크
-  규정이 서로를 가리키는가
+  규정(HARDENING.md 부재 검사)이 서로를 가리키는가
 
 ### D) 규칙 충돌
 - 중단 조건 목록·검증 루프 규칙·라우팅 번호 참조가 헌법/커맨드/README에서

@@ -152,19 +152,40 @@
   즉시 착수**한다. 착수 전 PLAN.md 체크를 갱신한다.
 - stage 완료 시 stage-reviewer(통합 검증)를 거친다. 개별 태스크 리뷰가
   구조적으로 볼 수 없는 태스크 간 일관성·통합 동작·stage 목표 달성을 판정한다.
+- **[P] 병렬 그룹은 워크트리 격리로만 병렬 실행한다** — 프로젝트 CLAUDE.md에
+  `worktree: shared-env|isolated-env` 선언(+필요 시 `worktree-env-setup:`)이
+  있을 때만. 선언 없음/`off`면 순차 강등. 워크트리는 `<dev 루트>/.worktrees/`
+  아래(헌법 상속 필수), 수명은 [P] 그룹 단위, PLAN.md·PROGRESS.md는 메인 트리
+  소유(워크트리 태스크는 접근 금지). 그룹 머지 직후 모든 태스크 verify를
+  메인 트리에서 재실행하는 **통합 검증 게이트**를 거친다(그룹 크기 1이면
+  생략) — 상세 절차는 execute-plan.
 - 자동 진행이 멈추는 조건: (a) 태스크 3회 연속 FAIL, (b) builder BLOCKED
   (`[전제 붕괴]` 한정 — `[verify 미통과]` BLOCKED는 FAIL 카운트로 흡수),
   (c) 전 태스크 완료, (d) 다음 태스크가 아키텍처 결정·파괴적 작업·요구사항 불명 포함
   (§1 Confusion Protocol / §5 가드레일 우선), (e) 사용자의 중단 지시,
   (f) stage-reviewer 2회 연속 FAIL, (g) `.dev-kit-pause` 파일 존재
-  (태스크 경계에서만 정지).
+  (태스크 경계에서만 정지), (h) 워크트리 그룹 머지 충돌 또는 같은 그룹
+  머지 후 통합검증 2회 연속 FAIL.
 - 멈출 때는 진행 상황(완료/남은 태스크, 이슈, NON-BLOCKING 누적)을 요약 보고한다.
 - PLAN.md 없이 진행하는 단발 작업은 위의 기본 검증 루프(reviewer만)를 따른다.
 
 ## 5. Safety Guardrails [엄격]
 
-- 파괴적 명령(rm -rf, DROP TABLE, force-push, git reset --hard, 프로덕션 배포)은
-  실행 전 반드시 확인을 받는다.
+- 파괴적 명령은 두 범주이고 취급이 다르다:
+  - **데이터·환경 파괴** (rm -rf, DROP SCHEMA/DATABASE/TABLE, TRUNCATE,
+    docker volume rm·compose down -v, git reset --hard, force-push, 프로덕션
+    배포): 실행 전 반드시 확인을 받는다.
+  - **되돌리기 — 미커밋 작업을 없애거나 워킹트리를 되돌리는 모든 명령**
+    (git checkout <경로> / git restore / git clean / git stash / git rm /
+    git branch -D / git reflog expire): 확인이 아니라 **전면 금지**다.
+    복구가 필요하면 사용자가 직접 수행한다 — 병렬 태스크의 미커밋 산출물을
+    git checkout <경로>로 파괴한 실사고(2026-08)가 근거다. 브랜치 생성·전환
+    (`git checkout -b`, `git checkout <브랜치>`)은 이 범주가 아니다.
+  - **초기화 원칙**: 데이터를 지우는 방식으로 환경을 초기화하지 마라.
+    초기화가 필요하면 스크래치 리소스(별도 DB·별도 볼륨·리포 사본)를 만들어라.
+  - **역할 분담**: 이 목록(규칙)은 관측·설명용이고, 강제는 dev-kit 훅이,
+    최종 보증은 환경 권한(harden L1)이 담당한다. 훅이 없는 환경(헌법만 사용)
+    에서도 이 목록은 그대로 지킨다.
   - dev-kit이 설치돼 있으면 **PreToolUse 훅이 이 부류를 실제로 차단한다**
     (deny). 차단됐다는 이유로 우회를 시도하지 마라 — 스크래치 리소스(별도
     DB·리포 사본)로 목적을 달성하거나, 사용자에게 직접 실행을 요청한다.
