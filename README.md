@@ -76,9 +76,10 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 경계 파일·계약 테스트, 이후 태스크는 계약에만 의존, mode B는 트랙 manifest 기록) |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 경계 파일·계약 테스트, 이후 태스크는 계약에만 의존, mode B는 트랙 manifest 기록) + **프로비저닝 [엄격]**(mode A 판정 시 worktree 선언·테스트 리소스 규칙을 프로젝트 CLAUDE.md에 직접 기입 — 수정 파일은 PLAN.md·프로젝트 CLAUDE.md 2개 한정, `프로비저닝: …` 1줄 보고) + **mode 재판정**(계획 수정·stop-the-world 후 — S→A 자동, A→S는 진행 중 [P] 없을 때만, B 상향은 승인 게이트 유지 [엄격]) |
 | `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, standard 코드 태스크 **TDD 2단 디스패치**([red] 테스트 커밋→오케스트레이터 red 확인→[green] 구현 커밋), **verify 선행 게이트**(reviewer 호출 전 verify 직접 실행 — 실패 시 리뷰 없이 재작업, 안전 제약 상위 적용), 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(입력 4종 제한, 커밋 전 리뷰 흐름은 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 다음 태스크 브리핑 작성(NEXT TASK 이관분), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증(입력은 발췌만), **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator`·`red:` 확인 포함). **mode 분기**: S=순차 강등, A=[P] 리뷰 병렬화+인터리빙 슬롯(상한 3, 게이트·리뷰 밀도 유지), B=**headless 트랙 런처 [엄격]**(계약 스테이지 직렬 완료 → 트랙 워크트리+manifest → `claude -p` 백그라운드 발사, 폴링 없이 status 파일 취합 — `--dangerously-skip-permissions` 절대 금지, 트랙은 push·머지 권한 없음, 사전 점검 실패 시 A로 강등) |
 | `commands/metrics.md` | PROGRESS 기록 → 실측 지표 산출 (오케스트레이터 직접 절차, 서브에이전트 없음). 재시도율(FAIL 유형 분해)·소요(병렬 합집합)·병렬 효율·red 확인 비율 + 비교 모드(단축률). 기존 기록에서만 계산 — 새 기록 의무는 `- 시작:` 1줄뿐. **파싱 실패는 `n/a (사유)` [엄격]** — 추정 금지 |
+| `commands/migrate.md` | 기존 프로젝트 → 현행 규격 단일 명령. mode 판정·기입(B는 자동 기입 금지 — A로 기입 + "B 후보" 보고) → 프로비저닝 → verify 정리(allowlist 형태로 교체, 필요 시 package.json scripts 추가 — **검증 강도 변경 금지 [엄격]**, 절차형 2종 유지) → **위험 항목 보고 [엄격]**(부수효과 verify·개발/공유 DB 테스트 설정은 수정 없이 목록 보고 + 해당 태스크 `hold:` 표시 — execute-plan이 건너뜀) → 자기 검사(수정 파일 PLAN.md·프로젝트 CLAUDE.md·package.json scripts 3개 한정 [엄격]) 후 `[dev-kit-migrate]` 단일 커밋. **멱등 [엄격]** — 재실행 시 변경 0건 통과 |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD 2단 디스패치([red] 테스트만 작성 / [green] 최소 구현 — 커밋은 오케스트레이터), 범위 밖 수정 금지, verify 통과 후에만 완료 선언(red 단계는 의도된 실패가 완료 조건), 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
 | `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). 입력은 브리핑 4종(태스크 정의·diff·오케스트레이터 verify 결과 1줄·프로젝트 CLAUDE.md)으로 제한 — PROGRESS·설계 문서·이전 태스크 내역 주입 금지. diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING(최대 5) 구분, TDD 검사는 신규 테스트 존재·assert 실체성만(red/green 사실 확인은 오케스트레이터 실행 + git 히스토리 소관). **verdict만 반환** — 다음 태스크 브리핑(NEXT TASK)은 작성하지 않는다(오케스트레이터로 이관). 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
@@ -158,6 +159,22 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 프로젝트마다 복사할 필요는 없다. 세션은 항상 프로젝트 폴더 안에서 켠다.
 
 ---
+
+## 시작하기 — 2경로
+
+설치(위) 후 프로젝트 셋업은 자동이다 — 사람이 손으로 하는 단계가 없다.
+
+- **신규 프로젝트**: 그냥 요청하면 된다. write-plan이 mode 판정 직후
+  판정이 요구하는 전제(worktree 선언, 테스트 리소스 규칙)를 프로젝트
+  CLAUDE.md에 **직접 기입**하고(프로비저닝 — 수정 파일은 PLAN.md·프로젝트
+  CLAUDE.md 2개 한정 [엄격]), 기입 내역을 `프로비저닝: …` 1줄로 보고한다.
+- **기존 프로젝트** (구버전 dev-kit 규격의 PLAN.md가 있는 경우):
+  `/dev-kit:migrate` 1회 → 보고 확인 → "진행해"로 재개.
+  mode 판정·기입, 프로비저닝, verify의 allowlist 형태 정리(검증 강도 변경
+  금지 [엄격])까지 자동으로 수행하고, 위험 항목(부수효과 있는 verify,
+  개발·공유 DB를 무는 테스트 설정)은 수정하지 않고 목록으로 보고한다
+  [엄격] — 해당 태스크는 사용자 결정 전까지 `hold:` 표시로 재개 대상에서
+  제외된다. **멱등 [엄격]** — 재실행해도 변경 0건으로 통과한다.
 
 ## 사용법
 
@@ -239,6 +256,7 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 /dev-kit:execute-plan          # 실행만 (첫 미완료 태스크부터)
 /dev-kit:execute-plan stage 2  # 특정 stage만
 /dev-kit:metrics [경로]        # PROGRESS 기록 → 실측 지표 스니펫 (인자 2개면 비교 모드)
+/dev-kit:migrate               # 기존 프로젝트를 현행 규격으로 (멱등 — 위 "시작하기")
 ```
 
 ### 실측 지표 (`/dev-kit:metrics`)
@@ -429,7 +447,9 @@ DESTRUCTIVE 행)만으로는 사고를 막지 못한다 — 드러나는 시점�
 격리한다 — 마크다운 규칙이 세 번 못 막은 것을 파일시스템이 막는다.
 병렬 태스크가 서로의 미커밋 산출물을 건드릴 방법 자체가 없어진다.
 
-프로젝트 CLAUDE.md에 선언해야 켜진다 (없으면 `off`):
+프로젝트 CLAUDE.md에 선언돼 있어야 켜진다 (없으면 `off`). 선언은 손으로
+쓸 필요 없다 — mode A 판정 시 write-plan 프로비저닝(신규)·`/dev-kit:migrate`
+(기존)가 직접 기입하고, 스택 판정이 불가하면 기입 대신 보고한다:
 
 ```
 worktree: shared-env | isolated-env | off
@@ -517,7 +537,10 @@ v1.7에서 이 규율에 **관측 수단**을 붙였다: 리뷰어는 VERIFIED�
   TDD(§3), debugging 4단계, 검증 루프(§4)·verify 선행 게이트, 안전
   가드레일(§5), 계약 스테이지(Stage 0), mode B 런처 안전 제약, audit,
   metrics의 n/a 규칙(파싱 실패를 추정으로 메우지 않는다)·실측 지표 섹션의
-  숫자 조작 금지(지어낸 수치·가짜 데모 금지 — 실측 출력으로만 채운다).
+  숫자 조작 금지(지어낸 수치·가짜 데모 금지 — 실측 출력으로만 채운다),
+  프로비저닝·migrate의 수정 파일 한정(각각 2개·3개), migrate의 멱등성·
+  위험 항목 보고(수정 아닌 보고 + `hold:` 제외 표시)·검증 강도 변경 금지,
+  mode 재판정의 B 상향 승인 게이트 유지.
 - **[유연]** — 원칙을 유지하되 적용 방식은 맥락에 맞게 적응한다:
   brainstorming 질문 방식, docs 문서 형식, 세리머니 규모(§3),
   조건부 승인 게이트·mode 판정 기준값(8/15 — 프로젝트 CLAUDE.md 오버라이드).
