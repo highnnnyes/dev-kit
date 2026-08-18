@@ -35,7 +35,11 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   4종 ↔ stage-reviewer.md 스코프 — 양쪽 목록이 일치하는가
 - verify 선행 게이트: execute-plan 게이트(+안전 제약 allowlist·금지 패턴) ↔
   write-plan "부수효과 없는 verify" 규칙 ↔ PROGRESS `FAIL(verify-gate)` 유형
-  ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가
+  ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가. 절차형 verify 허용 목록
+  (docs "drift 스캔 통과"·harden "증거 칸 충족" 2종 열거)이 execute-plan·
+  write-plan 양쪽에서 동일하고 그 외 확장 문구가 없는가
+- `[green]` 리뷰 PASS 후 amend 파일 한정(PLAN.md·PROGRESS.md) —
+  execute-plan 기록 규칙에 존재하고, 위반 시 중단·보고가 명시돼 있는가
 - 조건부 승인 게이트 기준값(태스크 8·stage 3·신규 파일 5·스키마/외부 API/
   의존성): 헌법 §4 라우팅 3번 ↔ write-plan 작성 후 ↔ README — 3자 일치하는가
 - stage-reviewer 출력(STAGE VERDICT·FINDINGS·PROPOSED TASKS·VERIFIED의
