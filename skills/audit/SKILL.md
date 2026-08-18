@@ -39,7 +39,23 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   (docs "drift 스캔 통과"·harden "증거 칸 충족" 2종 열거)이 execute-plan·
   write-plan 양쪽에서 동일하고 그 외 확장 문구가 없는가
 - `[green]` 리뷰 PASS 후 amend 파일 한정(PLAN.md·PROGRESS.md) —
-  execute-plan 기록 규칙에 존재하고, 위반 시 중단·보고가 명시돼 있는가
+  execute-plan 기록 규칙에 존재하고, 위반 시 중단·보고가 명시돼 있는가.
+  **소유권 스코프 구분**: mode S/A [P] 워크트리 태스크(메인 트리 소유 —
+  amend 대상 아님, 머지 후 기록) ↔ mode B 트랙 워크트리(트랙이 트랙 로컬
+  PROGRESS.md 소유·기록 — amend 한정 규칙 동일 적용, 메인 PROGRESS에는
+  통합 스테이지에서 요약만 병합)가 execute-plan에서 일관되게 구분되는가
+- `mode: S|A|B` 헤더: write-plan 생산(판정 기준 8/15·보수적 강등·오버라이드
+  기록) ↔ execute-plan 소비(사전 체크 — 헤더 없으면 S, B는 승인 기록 필수)
+  ↔ 헌법 §4 요약 ↔ README — 값·기준이 일치하는가
+- 계약 스테이지: write-plan Stage 0 규정(role 2종+ [엄격]·mock 계약 테스트·
+  계약 변경 stop-the-world) ↔ execute-plan 중단 조건 (i) ↔ 헌법 §4 중단
+  조건 (i) — 3자 일치하는가. builder 계약 파일 임의 수정 = reviewer
+  BLOCKING + `.dev-kit-scope` 훅 차단이 명시돼 있는가
+- mode B 런처: 발사 명령(`claude -p "/dev-kit:execute-plan track <이름>"`)
+  ↔ execute-plan 사전 체크의 `track <이름>` $ARGUMENTS 해석,
+  `.track-<이름>.status` 형식(3줄 + 결과 라인) 생산 ↔ 메인 세션 취합 소비,
+  안전 제약(skip-permissions 금지·headless BLOCKED 자기 종료·push/머지 권한
+  없음·사전 점검 3종 + 실패 시 A 강등)이 존재하는가
 - 조건부 승인 게이트 기준값(태스크 8·stage 3·신규 파일 5·스키마/외부 API/
   의존성): 헌법 §4 라우팅 3번 ↔ write-plan 작성 후 ↔ README — 3자 일치하는가
 - stage-reviewer 출력(STAGE VERDICT·FINDINGS·PROPOSED TASKS·VERIFIED의

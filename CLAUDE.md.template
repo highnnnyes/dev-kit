@@ -155,6 +155,16 @@
 - 비자명한 기능/설계 작업은 `/write-plan`으로 PLAN.md를 먼저 생성한다
   (단계 → verify 하나 단위 태스크 = 테스트 1~2개 + 그 구현(대략 5~10분),
   각 태스크에 파일 경로·verify·role/tier/risk 태그 필수).
+- **실행 모드 라우팅**: write-plan이 계획 생성 직후 판정해 PLAN.md 헤더에
+  `mode: S|A|B (근거)` 기록 — S(태스크 8개 미만 또는 본질적 직렬)=현행 순차·
+  계약 스테이지 생략, A(8개 이상 + role 2종 이상)=계약 스테이지(Stage 0,
+  경계 파일+계약 테스트 [엄격]) + 단일 세션 [P] 병렬, B(15개 이상 + 트랙
+  파일 비중첩 + 분량 편차 작음)=**자동 진입 금지** — 트랙 분할안 출력 후
+  사용자 승인 시에만 headless 트랙 병렬(런처·안전 제약은 execute-plan).
+  애매하면 낮은 모드(S>A>B 보수적). 기준값(8/15)은 [유연] — 프로젝트
+  CLAUDE.md 오버라이드 가능. 사용자 오버라이드("B로 올려"/"순차로 해")는
+  헤더에 기록. 헤더 없는 기존 PLAN.md는 S로 간주(하위 호환).
+  계약 변경은 stop-the-world — DECISIONS급 승격 후 사용자 확인.
 - 실행은 `/execute-plan`으로: 태스크마다 신선한 `builder` 서브에이전트가 구현하고
   `reviewer`가 검증한다. 메인 에이전트는 오케스트레이터 역할만 하여
   긴 작업에서도 메인 컨텍스트 오염을 방지한다.
@@ -173,9 +183,9 @@
   착수 전 PLAN.md 체크를 갱신한다.
 - stage 완료 시 stage-reviewer(통합 검증)를 거친다. 개별 태스크 리뷰가
   구조적으로 볼 수 없는 태스크 간 일관성·통합 동작·stage 목표 달성을 판정한다.
-- **[P] 병렬 그룹은 워크트리 격리로만 병렬 실행한다** — 프로젝트 CLAUDE.md에
-  `worktree: shared-env|isolated-env` 선언(+필요 시 `worktree-env-setup:`)이
-  있을 때만. 선언 없음/`off`면 순차 강등. 워크트리는 `<dev 루트>/.worktrees/`
+- **[P] 병렬 그룹은 워크트리 격리로만 병렬 실행한다** — **mode A 이상**이고
+  프로젝트 CLAUDE.md에 `worktree: shared-env|isolated-env` 선언(+필요 시
+  `worktree-env-setup:`)이 있을 때만 (mode S는 [P] 태그가 있어도 순차 강등). 선언 없음/`off`면 순차 강등. 워크트리는 `<dev 루트>/.worktrees/`
   아래(헌법 상속 필수), 수명은 [P] 그룹 단위, PLAN.md·PROGRESS.md는 메인 트리
   소유(워크트리 태스크는 접근 금지). 그룹 머지 직후 모든 태스크 verify를
   메인 트리에서 재실행하는 **통합 검증 게이트**를 거친다(그룹 크기 1이면
@@ -186,7 +196,8 @@
   (§1 Confusion Protocol / §5 가드레일 우선), (e) 사용자의 중단 지시,
   (f) stage-reviewer 2회 연속 FAIL, (g) `.dev-kit-pause` 파일 존재
   (태스크 경계에서만 정지), (h) 워크트리 그룹 머지 충돌 또는 같은 그룹
-  머지 후 통합검증 2회 연속 FAIL.
+  머지 후 통합검증 2회 연속 FAIL, (i) 계약 변경 필요(mode A/B —
+  stop-the-world: DECISIONS급 승격, 전 트랙 태스크 경계 정지 후 사용자 확인).
 - 멈출 때는 진행 상황(완료/남은 태스크, 이슈, NON-BLOCKING 누적)을 요약 보고한다.
 - PLAN.md 없이 진행하는 단발 작업은 위의 기본 검증 루프(reviewer만)를 따른다.
 
