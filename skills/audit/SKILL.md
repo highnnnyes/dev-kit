@@ -22,11 +22,22 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
 ### C) 계약 일치 (생산 ↔ 소비)
 - PLAN.md 형식(stage/task, verify, role, tier, risk, [P], DECISIONS)
   ↔ execute-plan이 읽는 필드 (risk: high → reviewer 사전 승격 라우팅)
-- builder/builder-light 출력(STATUS·CHANGED·VERIFY·NOTES·BLOCKED,
-  red→green 기록) ↔ execute-plan·reviewer가 소비하는 필드
-- reviewer 출력(VERDICT·BLOCKING·NON-BLOCKING·요구사항 추적표·VERIFIED의
-  실행 명령 전량·NEXT TASK의 role·tier·risk·P그룹) ↔ 소비처
+- builder/builder-light 출력(STATUS·CHANGED·VERIFY·NOTES·BLOCKED) ↔
+  execute-plan·reviewer가 소비하는 필드. TDD 2단 디스패치 계약: 브리핑의
+  `[red]`/`[green]` 단계 표시 ↔ builder TDD 절차 ↔ `[plan N.M][red]`/
+  `[green]` 커밋 ↔ PROGRESS `- red:` 행 (execute-plan·builder·헌법 §3 일치)
+- reviewer 출력(VERDICT·BLOCKING·NON-BLOCKING 최대 5·요구사항 추적표·
+  VERIFIED의 실행 명령 전량 — **NEXT TASK 없음**: 다음 태스크 브리핑은
+  execute-plan 5의 오케스트레이터 몫) ↔ 소비처
   (VERIFIED 명령 목록 ↔ PROGRESS.md `- 리뷰명령:` 전재)
+- 리뷰 입력 제한: reviewer 브리핑 4종(태스크 정의·diff·verify 결과 1줄·
+  프로젝트 CLAUDE.md) ↔ reviewer.md 입력 규칙, stage-reviewer 브리핑 발췌
+  4종 ↔ stage-reviewer.md 스코프 — 양쪽 목록이 일치하는가
+- verify 선행 게이트: execute-plan 게이트(+안전 제약 allowlist·금지 패턴) ↔
+  write-plan "부수효과 없는 verify" 규칙 ↔ PROGRESS `FAIL(verify-gate)` 유형
+  ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가
+- 조건부 승인 게이트 기준값(태스크 8·stage 3·신규 파일 5·스키마/외부 API/
+  의존성): 헌법 §4 라우팅 3번 ↔ write-plan 작성 후 ↔ README — 3자 일치하는가
 - stage-reviewer 출력(STAGE VERDICT·FINDINGS·PROPOSED TASKS·VERIFIED의
   실행 명령 전량) ↔ 소비처
 - 직접 처리 태스크 표기(`builder=by=orchestrator`) ↔ stage-reviewer 생략

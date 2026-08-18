@@ -23,6 +23,20 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
      검증하는 신규/확장 테스트를 명시해야 한다.** "기존 테스트 통과"만으로는
      verify 미달 — 태스크를 다시 정의하라. 프로젝트에 테스트 인프라가 없으면
      Stage 1에 테스트 셋업 태스크를 넣어라.
+     **[엄격] verify는 부수효과 없는 명령만 허용한다.** 실행 루프의
+     오케스트레이터가 이 명령을 직접 실행하므로(verify 선행 게이트·red 확인 —
+     execute-plan 참조) 자동 실행 가능한 형태로 쓴다: 패키지/빌드 스크립트
+     (`npm run *`·`pnpm *`·`yarn *`·`make *`·`pytest`·`go test`·`cargo test`·
+     `tsc --noEmit` 또는 프로젝트 CLAUDE.md allowlist 명령). `rm`·`drop`·
+     `truncate`·`delete`·`reset`·`migrate`·`push`·`deploy`·`curl`/`wget`,
+     파이프·`&&`·`;` 연쇄, 리다이렉션이 들어간 verify는 작성 금지.
+     DB를 건드리는 테스트는 테스트 전용 리소스(테스트 DB·컨테이너·인메모리)
+     대상임이 verify 문구 또는 프로젝트 CLAUDE.md에서 확인 가능해야 한다 —
+     확인 불가하면 태스크로 만들지 말고 DECISIONS로 올려 계획 실행 전에
+     멈춰라. 개발 DB·공유 리소스를 대상으로 하는 verify는 작성 자체를 금지한다.
+     (명령이 아닌 검사 절차형 verify — role=docs의 "drift 스캔 통과",
+     harden의 "증거 칸 충족" — 는 오케스트레이터가 절차로 직접 수행하므로
+     이 명령 제약의 대상이 아니다.)
    - **role 태그**: 이 태스크에 맞는 전문 역할 하나 — 예: `frontend`, `backend`,
      `db`, `test`, `infra`, `docs`. 실행 시 builder에게 해당 전문가 페르소나가
      주입된다. 애매하면 `general`.
@@ -89,8 +103,8 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 - test: 당신은 테스트 엔지니어다. 경계값과 에러 경로를 우선 커버하라.
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
-- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: [신규 테스트 1~2개 red→green]
-- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: [신규 테스트 red→green + 확인 방법]
+- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: `npm run test -- path/to/file.test.ts` (신규 테스트 1~2개 red→green)
+- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: `npm run test -- ...` (신규 테스트 red→green)
 - [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · risk: normal · verify: [방법]
 
 ## Stage 2: ...
@@ -101,4 +115,8 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 - 없으면 PLAN.md 요약(단계 수, 태스크 수, 예상 리뷰 포인트)을 보여준다.
   수동 /write-plan 커맨드로 호출된 경우에만 여기서 멈추고
   "/execute-plan으로 실행 가능"을 안내한다. 자동 라우팅(헌법 §4) 경유
-  시에는 DECISIONS가 없으면 즉시 /execute-plan 절차로 이어간다.
+  시에는 DECISIONS가 없으면 헌법 §4의 **조건부 승인 게이트**를 적용한다 —
+  태스크 8개 이상 또는 stage 3개 이상 / 신규 파일 5개 이상 / 스키마 변경·
+  외부 API 연동·의존성 추가 포함 중 하나면 계획 출력 후 1회 확인을 기다리고,
+  그 외 소형 계획은 즉시 /execute-plan 절차로 이어간다 (기준값은 [유연] —
+  프로젝트 CLAUDE.md에서 오버라이드 가능).

@@ -21,17 +21,23 @@
 (요구사항 모호 시) brainstorming ──→ DESIGN.md   ← 질문으로 설계 확정
    ↓        (대형/고위험 시) grill: 설계/계획 심문
 /write-plan ──→ PLAN.md               ← stage → verify 하나 단위 태스크, role/tier/risk 태그, [P]병렬 그룹
-   ↓ (DECISIONS 없으면 대기 없이)
+   ↓ (DECISIONS 없으면: 소형 계획은 대기 없이 · 대형 계획은 1회 확인 — 조건부 승인 게이트)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함)
    │
    │  태스크마다: (착수 전 .dev-kit-pause 확인 — 있으면 태스크 경계에서 안전 정지)
    ├─→ tier 라우팅: standard → builder(sonnet) / light → builder-light(haiku)
-   │     (신선한 컨텍스트 + role 페르소나 주입, light BLOCKED 시 builder로 1회 승급)
+   │     (신선한 컨텍스트 + role 페르소나 주입, light BLOCKED 시 builder로 1회 승급.
+   │      standard 코드 태스크는 red/green 2단 디스패치 — [red] 테스트 커밋 후
+   │      오케스트레이터가 실패를 직접 확인, [green] 구현 커밋)
+   ├─→ verify 선행 게이트 [엄격] — 오케스트레이터가 verify 직접 1회 실행
+   │     (실패 → reviewer 호출 없이 재작업 브리핑, FAIL(verify-gate) 기록.
+   │      부수효과 없는 패키지/빌드 스크립트 형태만 자동 실행)
    ├─→ reviewer (sonnet 1차, 읽기 전용, 독립 컨텍스트) — 요구사항 추적표 + PASS/FAIL 판정
    │     (FAIL 시 opus 승격 재검증 — opus verdict가 최종, 오판율 기록.
-   │      risk: high 태스크는 FAIL 여부와 무관하게 처음부터 opus)
+   │      risk: high 태스크는 FAIL 여부와 무관하게 처음부터 opus.
+   │      verdict만 반환 — 다음 태스크 브리핑은 오케스트레이터가 작성)
    ├─→ PLAN.md 체크 + PROGRESS.md 기록 + git 커밋
-   └─→ NEXT TASK로 다음 태스크 (반복)
+   └─→ 다음 태스크 (반복)
    │
    │  stage 완료 시:
    └─→ stage-reviewer (기본 opus·위험 stage는 fable 승격, 읽기 전용) — 태스크 간 일관성·통합 동작·
@@ -51,12 +57,12 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, 아키텍처 결정은 DECISIONS로 분리 |
-| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(호출 직전 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증, **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator` 포함) |
-| `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD(red 확인→green) 절차 강제, 범위 밖 수정 금지, verify 통과 후에만 완료 선언, 막히면 BLOCKED 보고 |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리 |
+| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, standard 코드 태스크 **TDD 2단 디스패치**([red] 테스트 커밋→오케스트레이터 red 확인→[green] 구현 커밋), **verify 선행 게이트**(reviewer 호출 전 verify 직접 실행 — 실패 시 리뷰 없이 재작업, 안전 제약 상위 적용), 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(입력 4종 제한, 커밋 전 리뷰 흐름은 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 다음 태스크 브리핑 작성(NEXT TASK 이관분), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증(입력은 발췌만), **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator`·`red:` 확인 포함) |
+| `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD 2단 디스패치([red] 테스트만 작성 / [green] 최소 구현 — 커밋은 오케스트레이터), 범위 밖 수정 금지, verify 통과 후에만 완료 선언(red 단계는 의도된 실패가 완료 조건), 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
-| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING 구분, TDD 준수(red→green 기록·신규 테스트) 검사, PASS 시 다음 태스크 브리핑(NEXT TASK — role/tier/risk/[P그룹] 포함) 생성. 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
-| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안. VERIFIED에 실행 명령 전량 기록. **오케스트레이터 직접 처리 태스크가 있는 stage는 생략 조건이 전부 무효** — 그 diff의 유일한 독립 검증층 |
+| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). 입력은 브리핑 4종(태스크 정의·diff·오케스트레이터 verify 결과 1줄·프로젝트 CLAUDE.md)으로 제한 — PROGRESS·설계 문서·이전 태스크 내역 주입 금지. diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING(최대 5) 구분, TDD 검사는 신규 테스트 존재·assert 실체성만(red/green 사실 확인은 오케스트레이터 실행 + git 히스토리 소관). **verdict만 반환** — 다음 태스크 브리핑(NEXT TASK)은 작성하지 않는다(오케스트레이터로 이관). 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
+| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 입력은 브리핑 발췌로 제한(base sha·stage 완료 조건·PROGRESS 해당 stage 섹션·누적 NON-BLOCKING — PLAN/PROGRESS 전체 파일 주입·직접 읽기 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안. VERIFIED에 실행 명령 전량 기록. **오케스트레이터 직접 처리 태스크가 있는 stage는 생략 조건이 전부 무효** — 그 diff의 유일한 독립 검증층 |
 | `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
 | `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
 | `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
@@ -147,7 +153,7 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 |---|---|---|
 | 설계 필요 | 설계 문서 없음, 아이디어 수준 | brainstorming: 질문 → DESIGN.md → 계획으로 |
 | 심문 필요 | 대형/고위험 (마이그레이션, 결제·인증 등) | grill: 설계/계획 압박 검증 후 진행 |
-| 계획 필요 | 여러 파일, 새 모듈, 설계 판단 | PLAN.md 생성 → 전체 출력 → 즉시 실행 |
+| 계획 필요 | 여러 파일, 새 모듈, 설계 판단 | PLAN.md 생성 → 전체 출력 → 소형은 즉시 실행 · 대형(태스크 8+·stage 3+·신규 파일 5+·스키마/외부 API/의존성 포함)은 **1회 확인 후 실행** (조건부 승인 게이트 — 기준값 [유연]) |
 | 진행 계속 | PLAN.md에 미완료 태스크 + "진행해" 류 | 미완료 지점부터 자동 재개 |
 | 문서 요청 | 아키텍처 문서, API 명세, ERD, ADR, "문서 검사" | docs 스킬: drift 스캔 → 갱신/작성 |
 | 버그/오동작 | 버그 수정, 테스트 실패, 예상 밖 동작 | debugging 스킬: 재현→격리→역추적→수정 (조사 없이 수정 없음) |
@@ -159,6 +165,9 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 ### 실행이 멈추는 경우 (사용자 개입 지점)
 
 1. **DECISIONS** — 계획에 아키텍처 결정이 필요하면 실행 전에 물어보고 대기
+1-1. **조건부 승인 게이트** — DECISIONS가 없어도 대형 계획(태스크 8개↑ 또는
+   stage 3개↑ / 신규 파일 5개↑ / 스키마 변경·외부 API·의존성 추가 포함)은
+   계획 출력 후 1회 확인 대기. 기준값은 프로젝트 CLAUDE.md에서 오버라이드 가능
 2. **3회 연속 FAIL** — 같은 태스크가 리뷰를 3번 통과 못 하면 중단·보고
 3. **BLOCKED** — builder가 전제 붕괴를 발견하면 (파일 없음, 스펙 모순 등)
 4. **파괴적 작업·요구사항 불명** — rm -rf, DROP TABLE, force-push, 프로덕션
@@ -179,7 +188,8 @@ project/local scope는 이 리포에서만 활성화되므로 전역 방법론 �
 > Stage 2는 방식을 바꿔서 ...
 ```
 
-PLAN.md를 갱신하고 이어간다. 승인 게이트 없이도 계획 교정이 가능한 구조.
+PLAN.md를 갱신하고 이어간다. 소형 계획은 승인 게이트 없이도 이렇게 계획
+교정이 가능하고, 대형 계획은 조건부 승인 게이트가 실행 전 1회 확인을 잡는다.
 
 ### 일시정지 (`.dev-kit-pause`)
 
@@ -221,8 +231,8 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 - [ ] D1: PDF 라이브러리 — puppeteer(정확한 렌더링, 무거움) vs pdfkit(가벼움, 레이아웃 수동)
 
 ## Stage 1: 데이터 준비 — 완료 조건: export API가 JSON 반환
-- [ ] 1.1 export 서비스 + 직렬화 유닛테스트 2개 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · risk: high · verify: 신규 테스트 2개 red→green
-- [ ] 1.2 [P1] 템플릿 컴포넌트 + 렌더 테스트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · risk: normal · verify: 신규 렌더 테스트 red→green + 스토리북 확인
+- [ ] 1.1 export 서비스 + 직렬화 유닛테스트 2개 · 파일: `services/export.ts` (신규) · role: backend · tier: standard · risk: high · verify: `npm run test -- services/export.test.ts` (신규 테스트 2개 red→green)
+- [ ] 1.2 [P1] 템플릿 컴포넌트 + 렌더 테스트 · 파일: `components/PdfTemplate.tsx` (신규) · role: frontend · tier: standard · risk: normal · verify: `npm run test -- components/PdfTemplate.test.tsx` (신규 렌더 테스트 red→green)
 - [ ] 1.3 [P1] 테스트 픽스처 · 파일: `tests/fixtures/report.ts` (신규) · role: test · tier: light · risk: normal · verify: import 에러 없음
 ```
 
@@ -242,9 +252,8 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
   없으면/off면 순차 강등된다. 조건: 상호 의존 없음 + 파일 안 겹침 +
   **네임스페이스 안 겹침**(마이그레이션 버전·라우트·설정 키·픽스처 이름·DI
   등록명) + 의존성 변경 태스크 아님. 동시 최대 3개 (토큰 소모가 병렬 수에
-  비례). 리뷰는 각 워크트리 안에서 태스크별 수행, 그룹 내 리뷰에서는
-  NEXT TASK 생략(마지막 리뷰만 포함). 그룹 머지 후 통합 검증 게이트 통과
-  시에만 다음으로 (위 "워크트리 격리" 참조).
+  비례). 리뷰는 각 워크트리 안에서 태스크별 수행. 그룹 머지 후 통합 검증
+  게이트 통과 시에만 다음으로 (위 "워크트리 격리" 참조).
 
 ---
 
@@ -269,12 +278,21 @@ PROGRESS.md의 구조화 라인은 grep 가능한 계측 데이터다. 루프 �
 grep -h "^## .* Task" PROGRESS.md PROGRESS.archive.md | grep -c "시도 [2-9]회"   # 재시도 발생 태스크 수 (압축된 과거분은 archive에)
 grep -c "by=orchestrator" PROGRESS.md PROGRESS.archive.md                        # 독립 검증을 안 거친 태스크 수 (stage-reviewer 생략 판정 근거)
 grep -A1 "^- 리뷰명령:" PROGRESS.md | grep -c "git diff --"                       # 리뷰어가 스코프를 실제로 한정했는지
+grep -hc "verify-gate" PROGRESS.md PROGRESS.archive.md                           # 게이트가 리뷰 전에 차단한 실패 라운드 수 (= 절약된 리뷰 호출)
+grep -hc "^- red: CONFIRMED" PROGRESS.md PROGRESS.archive.md                     # 오케스트레이터가 red 실패를 직접 확인한 태스크 수
 ```
 
 v1.7부터 리뷰어가 실행한 Bash 명령이 PROGRESS.md에 원문으로 남는다. 이전에는
 로그 전체에서 `git diff`/`git status` 언급이 5건뿐이라 **리뷰어가 무엇으로
 diff를 봤는지 사후 판별이 불가능했다** — 결함이 있었더라도 관측이 안 되는
 상태였다. 이 목록으로 스코프 준수와 읽기 전용 준수가 동시에 관측된다.
+
+v1.9부터 FAIL사유 유형에 **`verify-gate`**가 추가됐다 [엄격] — 오케스트레이터가
+reviewer 호출 전에 verify를 직접 실행하는 선행 게이트에서 걸린 실패(및 red
+확인 실패)다. 이 유형의 건수는 "리뷰어 없이 걸러진 실패 라운드 수", 즉 게이트가
+절약한 리뷰 호출 수와 같다. builder의 자기 보고는 참고 정보일 뿐 진실의 원천은
+게이트의 독립 실행이므로, 이 유형이 많다는 것은 builder 자기 보고가 부정확하다는
+신호이기도 하다 (tier 배분·브리핑 품질 재검토 대상).
 
 해석 기준 — **재시도율 10~30%가 건강 범위**:
 - **0%에 수렴** → 리뷰어가 형식적으로 통과시키는 중일 가능성. reviewer의
@@ -309,7 +327,9 @@ false-PASS를 덮지만, normal 태스크의 false-PASS는 여전히 이 지표�
 - 수치·경계·길이·개수 조건은 **코드를 읽은 것이 증거가 될 수 없다** —
   `python -c` 등으로 실제 값을 계산하고 명령과 출력을 그대로 붙인다.
   부재 판정(미구현)은 grep/diff 결과를 증거로 쓴다.
-- `builder VERIFY에 red→green 기록이 있는가`는 전용 행으로 검사한다.
+- tier=standard 코드 태스크는 `신규 테스트가 diff에 존재하며 assert가
+  실체적인가`를 전용 행으로 검사한다 (v1.9부터 red→green 기록 감사는 리뷰
+  항목이 아니다 — 오케스트레이터 실행 + git 히스토리가 담당).
 - 증거를 못 채운 행이 하나라도 있으면 그 자체로 BLOCKING이고,
   BLOCKING을 찾아도 표는 끝까지 완성한다(첫 BLOCKING에서 중단 금지).
 
@@ -386,7 +406,8 @@ worktree-env-setup: <각 워크트리에서 실행할 준비 명령>
   살아 있을수록 충돌이 커진다). `.worktrees/`는 dev 루트 `.gitignore`에.
 - PLAN.md·PROGRESS.md는 메인 트리 소유 — 워크트리 태스크는 읽지도 쓰지도
   않는다 (건드리면 머지마다 충돌한다). reviewer는 워크트리 안에서
-  `git diff HEAD~1`로 리뷰 — 남의 변경이 물리적으로 없어 스코프 자동 보장.
+  `git diff HEAD~1`(TDD 2단 태스크는 `HEAD~2`)로 리뷰 — 남의 변경이
+  물리적으로 없어 스코프 자동 보장.
 - **머지 후 통합 검증 게이트**: 워크트리 격리의 구조적 대가는 verify가 격리
   상태에서만 도는 것이다 — A도 통과, B도 통과했는데 **머지된 결과는 아무도
   검증하지 않은 상태**가 된다. 그래서 그룹 머지 직후 모든 태스크의 verify를
@@ -456,13 +477,21 @@ v1.7에서 이 규율에 **관측 수단**을 붙였다: 리뷰어는 VERIFIED�
 스킬 내부 세분을 허용한다 — 예: brainstorming 전체는 [유연]이되
 "최소 안전선"(목적·성공 기준·비범위)은 [엄격].
 
-### TDD (tier=standard 코드 태스크 한정)
+### TDD (tier=standard 코드 태스크 한정) — 증거는 git 히스토리 [엄격]
 실패하는 테스트 먼저 작성 → 실패 실제 확인(red) → 통과시키는 최소 코드(green).
-- builder는 VERIFY에 **red→green 두 실행 결과**를 기록해야 하고, 처음부터
-  통과하는 테스트는 다시 쓴다 (기존 동작만 검증하고 있다는 신호).
-- reviewer는 red→green 기록을 **요구사항 추적표의 전용 행**으로 감사하고,
-  신규 테스트 부재를 BLOCKING(`verify 미충족`)으로 판정하며,
-  assert 없는 가짜 테스트도 잡는다.
+v1.9부터 TDD 증거는 서술 기록이 아니라 **커밋과 오케스트레이터의 독립 실행**으로
+남는다 — 커밋과 실행 결과는 위조할 수 없고, reviewer가 기록의 진위를 추론할
+필요가 없어진다 (검사 항목 축소 = 리뷰 토큰 절약).
+- 커밋이 2개로 분리된다: `[plan N.M][red] 테스트 추가`(테스트만) →
+  `[plan N.M][green] 구현`. red 커밋 직후 **오케스트레이터가 verify를 직접
+  실행해 실패를 확인**하고 PROGRESS.md에 `red: CONFIRMED`를 남긴다 —
+  실패하지 않으면(처음부터 green) 테스트 재작성 지시.
+- builder는 브리핑의 `[red]`/`[green]` 단계 표시를 따른다: red 단계는 테스트만
+  작성(구현 금지), green 단계는 커밋된 테스트를 통과시키는 최소 구현(테스트
+  수정 금지). 추가 비용은 셸 실행과 커밋 각 1회 + green 디스패치 1회다.
+- reviewer는 **신규 테스트가 diff에 존재하며 assert가 실체적인지**만 검사한다
+  — 부재는 BLOCKING(`verify 미충족`), assert 없는 가짜 테스트도 잡는다.
+  red→green 실행 기록 감사는 리뷰 항목에서 제거됐다.
 - write-plan은 standard 태스크의 verify에 신규/확장 테스트 명시를 요구하고,
   테스트 인프라가 없으면 Stage 1에 셋업 태스크를 넣는다.
 - 예외: tier=light, role=docs, 테스트 인프라 최초 셋업 태스크.
@@ -479,6 +508,15 @@ v1.7에서 이 규율에 **관측 수단**을 붙였다: 리뷰어는 VERIFIED�
 | reviewer | sonnet 1차, FAIL 시 opus 재검증(사후 승격) · `risk: high` 태스크는 처음부터 opus(사전 승격) | 호출의 대다수(실측 95%)가 PASS 확인 — 여기에 opus는 과잉. FAIL일 때만 opus가 재검증해 verdict를 확정한다(오버헤드는 FAIL율만큼만). 사후 승격은 라운드마다 독립 — 수정 후 재검증은 다시 sonnet 기본 호출부터 시작한다(직전 라운드가 opus였어도 opus를 이어 쓰지 않는다). 사후 승격만으로는 sonnet의 false-PASS(결함을 놓치고 통과)를 못 잡으므로 — 놓친 결함은 FAIL을 내지 않아 승격 자체를 트리거하지 못한다 — 실패 비용이 큰 조건(`risk: high`)은 사전 승격으로 처음부터 opus에 보낸다. 사전 승격은 태스크 속성이라 모든 라운드에서 유지된다 |
 | builder | sonnet (frontmatter 고정) | 태스크 단위 구현 |
 | builder-light | haiku (frontmatter 고정) | 판단 없는 기계적 작업 |
+
+**verify 선행 게이트가 티어링에 앞선다** (v1.9 [엄격]): 위 리뷰 티어링은
+verify 선행 게이트를 **통과한 구현**에만 도달한다 — builder 완료 보고 후
+오케스트레이터가 verify를 직접 1회 실행하고(모델 호출 없음, 비용은 테스트
+시간뿐), 실패한 구현은 reviewer에 도달하지 않는다. 실패 라운드당 리뷰 호출
+1회가 절약되고 자기 보고 조작·환각이 원천 차단된다. 신뢰성을 높이는 수단이
+리뷰어 호출 추가가 아니라 **호출 감소**인 지점이다. 자동 실행은 부수효과
+없는 패키지/빌드 스크립트 형태의 verify만 — 상세 안전 제약은
+`commands/execute-plan.md`.
 
 stage-reviewer 조건부 승격의 동작 방식: frontmatter는 `model: claude-fable-5`
 (**전체 모델 ID 필수** — `fable` 별칭은 frontmatter에서 무효라 호출 자체가
@@ -544,8 +582,11 @@ haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 �
   있는가"이지 "중요해 보이는가"가 아니다.
 - **특정 프로젝트만 계획 승인 후 실행하고 싶음** → 그 프로젝트의 CLAUDE.md에
   "이 프로젝트는 계획 승인 후 실행" 한 줄 추가 (하위가 상위를 덮어씀).
-- **에이전트가 만든 계획이 의도와 자주 어긋남** → dev/CLAUDE.md 라우팅 3번에서
-  "확인 대기 없이"를 "요약 확인 후"로 바꾸면 승인 게이트 1개가 생긴다.
+- **에이전트가 만든 계획이 의도와 자주 어긋남** → 조건부 승인 게이트(헌법 §4
+  라우팅 3번)의 기준값(태스크 8·stage 3·신규 파일 5)을 프로젝트 CLAUDE.md에서
+  낮춰라 [유연]. "모든 계획을 확인 후 실행"으로 오버라이드하면 항상 대기한다.
+- **verify-gate FAIL이 잦음** → builder 자기 보고가 부정확하다는 신호.
+  tier 배분(light 남용)과 브리핑의 verify 명시가 명확한지 재검토하라.
 
 ## 환경별 세팅 & 함정
 
@@ -572,8 +613,9 @@ dev-kit 자체는 순수 마크다운이라 Windows / Linux / macOS 전부 동�
 PLAN.md의 verify에 OS 종속 셸 명령을 직접 쓰지 마라
 (`rm -rf`, 파이프 체인, `&&` 연쇄 등). 대신 **패키지 스크립트로 감싸라**:
 `npm run test:unit`, `make check` 처럼. 같은 PLAN.md가 어느 기기에서
-재개돼도 verify가 동일하게 돈다. `/write-plan`에게
-"verify는 npm 스크립트로만 작성"이라고 프로젝트 CLAUDE.md에 못 박아두면 강제된다.
+재개돼도 verify가 동일하게 돈다. v1.9부터는 이식성이 아니라 **강제 조건**이다 —
+verify 선행 게이트는 패키지/빌드 스크립트 형태(+프로젝트 CLAUDE.md allowlist)만
+자동 실행하며, 목록 밖 verify는 태스크 경계에서 멈춰 사용자 확인을 요청한다.
 
 ### git — 자동 커밋 관련
 - **feature 브랜치에서 돌려라.** 태스크당 1커밋이 main에 직접 쌓이는 것을

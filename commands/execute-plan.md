@@ -76,6 +76,24 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      사유 태그로 tier를 재판정한다: `[판단 필요]`면 애초에 오분류였던
      것이므로 PLAN.md의 tier를 standard로 재기입하고 TDD를 적용한다.
      `[verify 미통과]`면 기계적 태스크가 맞으므로 light를 유지한다.
+   - **TDD 2단 디스패치 [엄격] — tier=standard 코드 태스크**: builder 호출을
+     red/green 두 단계로 나눈다. TDD 증거는 서술 기록이 아니라 **git 커밋과
+     오케스트레이터의 독립 실행**으로 남긴다 — 커밋과 실행 결과는 위조할 수 없다.
+     1. **red 디스패치**: 브리핑 첫 줄에 `[red]`를 명시하고 "verify의 테스트만
+        작성, 구현 금지"를 지시한다. builder 반환 후 CHANGED 한정 `git add` →
+        `[plan N.M][red] 테스트 추가` 커밋 (커밋은 오케스트레이터가 한다).
+     2. **red 확인 (커밋 직후)**: 오케스트레이터가 이 태스크의 verify를 직접
+        실행해 **실패를 직접 확인**하고, 4의 PROGRESS.md 기록에
+        `red: CONFIRMED`로 남긴다. 실패하지 않으면(처음부터 green) builder에게
+        테스트 재작성을 지시한다 — 이 재작성도 3회 FAIL 카운트에 산입하고
+        유형은 `verify-gate`로 기록한다. 이 실행은 아래 "verify 선행 게이트"의
+        안전 제약을 그대로 상속한다 — 별도의 임의 명령 실행 권한이 아니다.
+     3. **green 디스패치**: 브리핑 첫 줄에 `[green]`을 명시하고 "커밋된
+        테스트를 통과시키는 최소 구현"을 지시한다. builder 반환 후 CHANGED
+        한정 `git add` → `[plan N.M][green] 구현` 커밋.
+     대상 아님(tier=light, role=docs, 테스트 인프라 최초 셋업)은 기존 단일
+     디스패치. 워크트리 병렬 흐름에서도 동일하게 적용한다 — 커밋·red 확인
+     전부 해당 워크트리 안에서 수행하고, reviewer 스코프는 `git diff HEAD~2`.
    - **병렬 디스패치 — 워크트리 격리 (worktree: shared-env|isolated-env
      선언 시에만)**: 같은 [P그룹] 태스크들을 태스크마다 전용 워크트리에서
      동시에 실행한다. 동시 최대 3개 — 토큰 소모가 병렬 수에 비례한다.
@@ -96,13 +114,16 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
         않는다** — 이 파일들은 메인 트리 소유이고, 워크트리 브랜치가 건드리면
         머지마다 충돌한다. 기록은 오케스트레이터가 메인 트리에서만 한다.
      3. builder 반환 후 워크트리 안에서 `git add <CHANGED 파일들>` → 커밋
-        (태스크당 1커밋). 워크트리에는 이 태스크의 변경뿐이지만 CHANGED 한정
-        원칙은 유지한다. (커밋되므로 신규 파일 노출용 `git add -N`은 워크트리
-        흐름에서는 불필요하다 — diff가 커밋 경계로 잡힌다.)
+        (태스크당 1커밋 — TDD 2단 디스패치 태스크는 red/green 2커밋, 위 절차를
+        워크트리 안에서 수행). 워크트리에는 이 태스크의 변경뿐이지만 CHANGED
+        한정 원칙은 유지한다. (커밋되므로 신규 파일 노출용 `git add -N`은
+        워크트리 흐름에서는 불필요하다 — diff가 커밋 경계로 잡힌다.)
+        커밋 후 **verify 선행 게이트**(아래)를 해당 워크트리 안에서 실행한다.
      4. reviewer를 **워크트리 안에서** 실행한다 — 스코프:
-        `git diff HEAD~1 -- <파일들>`. 워크트리에는 남의 변경이 물리적으로
-        없으므로 스코프가 자동 보장된다. FAIL 시 같은 워크트리에서 수정 후
-        `git commit --amend`로 태스크당 1커밋을 유지하고 재리뷰한다.
+        `git diff HEAD~1 -- <파일들>` (TDD 2단 태스크는 `git diff HEAD~2 --
+        <파일들>`). 워크트리에는 남의 변경이 물리적으로 없으므로 스코프가
+        자동 보장된다. FAIL 시 같은 워크트리에서 수정 후 `git commit --amend`로
+        커밋 수를 유지하고(TDD 태스크는 `[green]` 커밋에 amend) 재리뷰한다.
      5. 그룹 전체 PASS 후 아래 "그룹 경계 처리"(머지 + 통합 검증 게이트)로
         넘어간다. BLOCKED·3회 FAIL 태스크의 워크트리는 **제거하지 않는다** —
         경로를 보고에 포함해 사용자가 직접 확인할 수 있게 한다.
@@ -110,8 +131,56 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      루프 중단, 사용자에게 사유와 함께 보고. `[verify 미통과]`(구현은 했으나
      verify 실패)면 해당 태스크의 정상 FAIL 카운트에 산입하고 실패 내용을
      브리핑에 추가해 재호출한다. (병렬 중이면 나머지 완료를 기다린 후 처리.)
+
+   **verify 선행 게이트 [엄격] — reviewer 호출 전 필수**: builder가 완료
+   (STATUS: DONE)를 보고하면 reviewer를 호출하기 **전에** 오케스트레이터가
+   PLAN.md에 명시된 이 태스크의 verify 명령을 직접 1회 실행한다. builder가
+   보고한 verify 결과는 참고 정보일 뿐 — **진실의 원천은 항상 오케스트레이터의
+   독립 실행 결과다** (자기 보고 조작·환각 원천 차단).
+   - **실패** → **reviewer를 호출하지 않는다** (실패 라운드당 리뷰 호출 1회
+     절약). 실패 출력의 마지막 20줄만 첨부해 builder에게 재시도 브리핑을
+     보낸다. 이 실패도 같은 태스크의 3회 FAIL 카운트에 포함하고, PROGRESS.md에
+     `FAIL(verify-gate)` 유형으로 기록한다.
+   - **성공** → 리뷰 브리핑에 `verify: PASS (orchestrator-run)` 한 줄을
+     포함하고 reviewer를 호출한다.
+   - 리뷰 FAIL 후 재작업의 재검증도 이 게이트부터 다시 시작한다.
+   - verify가 셸 명령이 아니라 검사 절차면(예: role=docs의 "drift 스캔 통과",
+     harden의 "증거 칸 충족") 오케스트레이터가 그 절차를 직접 수행해
+     판정한다 — 명령 실행이 아니므로 아래 안전 제약의 대상이 아니고,
+     통과 시 같은 형식(`verify: PASS (orchestrator-run)`)으로 브리핑한다.
+
+   **게이트 안전 제약 [엄격] — 게이트 로직보다 항상 우선**: verify 선행
+   게이트(및 red 확인)는 **새로운 자동 실행 경로**이므로 다음이 게이트
+   로직보다 상위 규칙이다.
+   - 오케스트레이터가 자동 실행할 수 있는 verify는 **패키지/빌드 스크립트
+     형태만이다**: `npm run *`, `pnpm *`, `yarn *`, `make *`, `pytest`,
+     `go test`, `cargo test`, `tsc --noEmit` 및 프로젝트 CLAUDE.md에
+     명시적으로 allowlist된 명령. 이 목록 밖의 verify는 실행하지 않고
+     태스크 경계에서 멈춰 사용자에게 확인을 요청한다.
+   - verify 문자열에 다음 패턴이 포함되면 **allowlist 여부와 무관하게 자동
+     실행 금지**: `rm`, `drop`, `truncate`, `delete`, `reset`, `migrate`,
+     `push`, `deploy`, `curl`/`wget`, 파이프·`&&`·`;` 연쇄, 리다이렉션(`>`).
+     헌법 §5(파괴적 명령 확인)가 이 게이트에도 그대로 적용된다 —
+     "verify 게이트니까"는 확인 생략 사유가 아니다.
+   - red 확인 실행(TDD 2단 디스패치의 2)도 동일한 verify 명령의 재실행이므로
+     위 제약을 그대로 상속한다. 별도의 임의 명령 실행 권한을 만들지 않는다.
+   - 이 게이트는 Claude Code의 permission rules를 **우회하지 않는다.**
+     settings.json의 deny rule(시크릿 읽기 차단 등)과 파괴적 명령 확인
+     프롬프트는 게이트 실행에도 동일하게 걸린다 — "프롬프트가 실행하라고
+     했으므로 확인 생략" 해석은 금지다.
+
 3. **reviewer 서브에이전트 호출** (스코프: 이 태스크의 diff만) → VERDICT 수신.
-   - **신규 파일 스코프 확보 (호출 직전 [엄격])**: builder의 CHANGED 파일
+   - **리뷰 입력 제한 [엄격]**: reviewer 브리핑에는 다음 네 가지만 담는다 —
+     ① 태스크 정의(PLAN.md의 해당 태스크 줄 원문), ② diff 스코프 지정
+     (TDD 2단 태스크는 `git diff HEAD~2 -- <파일들>`, 그 외는
+     `git diff -- <파일들>`), ③ 오케스트레이터 verify 결과 1줄
+     (`verify: PASS (orchestrator-run)`), ④ 프로젝트 CLAUDE.md(자동 상속 —
+     별도 주입 불필요). PROGRESS.md·설계 문서·이전 태스크 내역 주입은
+     금지한다 — 판정에 필요한 최소 입력이 리뷰 토큰과 편향을 동시에 줄인다.
+   - **신규 파일 스코프 확보 (호출 직전 [엄격] — 커밋 전 리뷰 흐름 한정)**:
+     TDD 2단 디스패치 태스크는 이 절차가 불필요하다 — red/green 커밋으로
+     신규 파일이 diff에 이미 노출된다. 커밋 전에 리뷰하는 그 외 태스크
+     (tier=light, role=docs 등)만 해당: builder의 CHANGED 파일
      목록에 대해 `git add -N <CHANGED 파일들>`을 실행한다(intent-to-add).
      untracked 신규 파일은 git diff에 나타나지 않아, 리뷰어가 신규 테스트
      파일을 못 보고 "테스트 없음"으로 오판하거나 추적표의 부재 판정 증거가
@@ -125,8 +194,6 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      시키지 않는다. (워크트리 병렬 흐름에서는 커밋 후 리뷰이므로 이 절차가
      불필요하다 — 신규 파일이 커밋에 포함되어 diff에 이미 노출된다.)
    병렬 그룹은 태스크별로 순차 리뷰한다 (리뷰까지 병렬화하면 지적사항 반영이 꼬인다).
-   [P] 그룹 내 태스크의 리뷰에서는 NEXT TASK를 생략한다
-   (그룹 완료 후 마지막 리뷰만 NEXT TASK 포함).
    - **리뷰 2단 티어링**: 승격 조건은 둘이다.
      - **(1) 사후 승격**: 기본 호출은 model 파라미터를 생략한다(frontmatter의
        sonnet 적용). **sonnet이 FAIL이면** opus로 승격 재검증한다.
@@ -146,7 +213,9 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      - opus FAIL → 최종 FAIL. 재브리핑에는 opus의 BLOCKING을 사용한다.
      sonnet PASS는 승격 없이 그대로 최종 PASS다.
    - FAIL(최종 verdict 기준) → BLOCKING 사항을 브리핑에 추가해서 builder
-     재호출. 수정 후 재검증은 **다시 sonnet 기본 호출부터** 시작한다 —
+     재호출. TDD 2단 태스크는 수정분을 CHANGED 한정 `git add` 후 `[green]`
+     커밋에 amend한다. 수정 후 재검증은 verify 선행 게이트부터 다시 거쳐
+     **다시 sonnet 기본 호출부터** 시작한다 —
      사후 승격은 라운드마다 독립이며, 직전 라운드가 opus였다는 이유로 opus를
      이어 쓰지 않는다. 단 **사전 승격(risk: high)은 태스크의 속성**이므로
      모든 라운드에서 opus를 유지한다. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
@@ -158,12 +227,16 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      ```
      ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델|by=orchestrator] · reviewer=[sonnet|sonnet→opus|opus(사전승격)|미호출] · tier=[light|standard] · risk=[normal|high]
      - 변경: [builder CHANGED 요약]
-     - 검증: [reviewer VERIFIED 요약]
+     - 검증: [reviewer VERIFIED 요약 + 오케스트레이터 verify 게이트 결과]
+     - red: [CONFIRMED (orchestrator-run)|재작성 N회 후 CONFIRMED] (TDD 2단
+       디스패치 태스크만 — 그 외 태스크는 이 줄 생략)
      - 리뷰명령: [reviewer VERIFIED의 Bash 명령 목록을 **그대로** 옮겨 적는다 —
        요약·축약 금지. 계측이 로그에 남아야 스코프 준수와 읽기 전용 준수를
        사후 검증할 수 있다]
      - 파괴적명령: [builder DESTRUCTIVE 행을 그대로 전재 — "없음"도 그대로 적는다]
-     - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|기타)]
+     - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|verify-gate|기타)]
+       (verify 선행 게이트·red 확인에서 걸린 실패는 유형 `verify-gate` —
+       BLOCKING 요약 자리에 실패한 verify 명령과 결과 한 줄)
      - 넘김: [builder NOTES / reviewer NON-BLOCKING]
      ```
      FAIL이 한 번이라도 있었던 태스크는 `- FAIL사유:` 줄을 반드시 포함한다
@@ -179,6 +252,10 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      검증 가능하게 하기 위한 필드다(아래 stage 경계 처리 참조).
    - **git commit** 태스크당 1회. 메시지: `[plan 1.2] 태스크 목표 한 줄` +
      본문에 verify 결과. 이러면 태스크 단위로 diff·bisect·롤백이 가능하다.
+     **TDD 2단 태스크는 이미 `[red]`/`[green]` 2커밋이 있으므로 새 커밋을
+     만들지 않는다** — PLAN.md 체크·PROGRESS.md 갱신을 `[green]` 커밋에
+     amend로 흡수한다 (메시지 본문에 오케스트레이터 verify 게이트 결과 추가.
+     push 전 로컬 커밋이므로 amend는 안전하다).
    **그룹 경계 처리 (워크트리 병렬 그룹 한정)**: 그룹 전체 PASS 후:
    1. 오케스트레이터가 메인 트리에서 `wt/<task-id>` 브랜치들을 **순차 머지**
       한다. 충돌 발생 시 `git merge --abort` 후 루프를 중단하고 충돌 파일과
@@ -202,10 +279,13 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
         `## [시각] Group <id> 머지 후 통합검증 — FAIL · 실패한 verify: ...`
         같은 그룹에서 2회 연속 실패하면 루프를 멈추고 사용자에게 보고한다.
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
-   (통합 검증)를 호출한다 — 스코프: stage 시작 커밋..HEAD 통합 diff +
-   PLAN.md의 stage 완료 조건 + PROGRESS.md의 해당 stage 기록.
-   stage 시작 커밋은 PROGRESS.md의 `Stage N 시작 — base=` 라인에서 읽어
-   브리핑에 sha로 명시해 전달한다.
+   (통합 검증)를 호출한다.
+   - **입력 제한 [엄격]**: 브리핑에 담아 전달하는 것이 입력의 전부다 —
+     ① stage 시작 커밋 sha(PROGRESS.md의 `Stage N 시작 — base=` 라인에서
+     읽어 명시 — 통합 diff `<sha>..HEAD`의 기준점), ② PLAN.md에서 발췌한
+     해당 stage 완료 조건, ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
+     ④ 누적 NON-BLOCKING 목록. **PLAN.md·PROGRESS.md 전체 파일 주입 금지** —
+     stage-reviewer가 두 파일을 직접 읽게 하지도 않는다.
    - **모델 선택**: 기본은 Task 호출 시 `model: opus`를 **명시**한다
      (frontmatter의 fable을 강등). 아래 승격 조건 중 하나라도 해당하면
      model 파라미터를 **생략**해 frontmatter의 fable이 적용되게 한다:
@@ -231,7 +311,7 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      `- 승격사유: [해당 승격 조건]`을 추가한다.
    - **롤링 요약 (통합검증 기록 후 마지막 절차)**: PROGRESS.md가 stage 수에
      비례해 커지는 것을 막는다. 반드시 stage-reviewer 호출·기록이 **끝난 뒤**
-     수행한다 (stage-reviewer는 현 stage 전문을 읽어야 한다):
+     수행한다 (stage-reviewer 브리핑의 현 stage 발췌가 전문이어야 한다):
      1. 종료된 stage의 태스크 블록들, `Stage N 시작 — base=` 라인,
         `Stage N 통합검증` 블록 원문을 `PROGRESS.archive.md`(프로젝트 루트,
         없으면 생성)에 그대로 append — 요약으로 치환되는 모든 라인은
@@ -266,7 +346,10 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      진행 상태가 전부 파일(PLAN/PROGRESS/커밋)에 있어 재개는 무손실이고,
      긴 세션은 턴마다 누적 컨텍스트를 재처리해 토큰 소모가 커지며 규칙 준수도
      저하된다." 권고일 뿐 루프를 중단하지는 않는다.
-5. reviewer의 NEXT TASK 브리핑과 builder의 NOTES를 다음 태스크 브리핑에 반영하고 1로.
+5. **다음 태스크 브리핑은 오케스트레이터가 작성한다** — reviewer는 verdict만
+   반환한다(NEXT TASK 없음 — 판정자와 계획자의 관심사 분리). PLAN.md의 다음
+   미완료 태스크 정의에 builder NOTES·reviewer NON-BLOCKING 중 이번에 반영할
+   것을 얹어 1의 브리핑 절차로 돌아간다.
 
 ## 경량화 규칙 (토큰 관리 — 헌법 §4 기본 검증 루프의 명시적 예외)
 - 자명한 소형 태스크(설정 한 줄, 자명한 오타 수준)는 builder 없이 직접 처리해도 된다.
@@ -296,6 +379,7 @@ RESUME 블록을 갱신한다 (stage 경계 처리의 RESUME 규칙과 동일 �
 추가로 **검증 통계** 섹션을 포함한다 (PROGRESS.md **+ PROGRESS.archive.md**의
 구조화 라인에서 집계한다 — 롤링 요약으로 압축된 stage의 원본 라인은 archive에 있다):
 - 총 태스크 / 1회 통과 / 재시도 발생(비율%) / BLOCKED
+- verify-gate FAIL 건수 (게이트가 리뷰 전에 차단한 라운드 수 = 절약된 리뷰 호출 수)
 - tier별 분포 (light/standard 각 몇 건, light 승급 건수)
 - risk별 분포 (normal/high 각 몇 건 — high는 전부 opus 사전 승격)
 - FAIL 사유 상위 유형 (컨벤션 위반·기능 결함·verify 미충족·보안·기타)

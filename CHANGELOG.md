@@ -3,6 +3,52 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.9.0 — 2026-08-18
+검증 신뢰성과 토큰 효율 동시 개선 — 원칙: **리뷰어(opus) 호출 횟수를 줄이는
+방향으로만 신뢰성을 높인다.** 새 에이전트·스킬·파일 없이 기존 5파일 계약 개편.
+
+- **verify 선행 게이트** (execute-plan [엄격]): builder 완료 보고 후 reviewer
+  호출 **전에** 오케스트레이터가 해당 태스크 verify를 직접 1회 실행. 실패 →
+  reviewer 미호출, 실패 출력 마지막 20줄로 재시도 브리핑, 3회 FAIL 카운트
+  산입 + PROGRESS `FAIL(verify-gate)` 유형. 성공 → `verify: PASS
+  (orchestrator-run)` 1줄을 리뷰 브리핑에 포함. builder 자기 보고는 참고
+  정보 — 진실의 원천은 오케스트레이터 독립 실행 (자기 보고 조작·환각 원천
+  차단 + 실패 라운드당 리뷰 1회 절약).
+  **안전 제약이 게이트보다 상위 [엄격]**: 자동 실행은 패키지/빌드 스크립트
+  형태(npm run/pnpm/yarn/make/pytest/go test/cargo test/tsc --noEmit +
+  프로젝트 CLAUDE.md allowlist)만, `rm`/`drop`/`truncate`/`delete`/`reset`/
+  `migrate`/`push`/`deploy`/`curl`/`wget`·파이프·연쇄·리다이렉션 포함 시
+  allowlist 무관 금지, 헌법 §5·permission rules 그대로 적용("게이트니까
+  확인 생략" 해석 차단). write-plan에 "verify는 부수효과 없는 명령만" 규칙
+  신설 — DB 테스트는 테스트 전용 리소스 확인 불가 시 DECISIONS로 승격,
+  개발 DB·공유 리소스 verify 작성 금지.
+- **TDD 증거를 git 히스토리로 이전** (builder·reviewer·execute-plan [엄격]):
+  tier=standard 코드 태스크를 red/green 2단 디스패치로 분리 —
+  `[plan N.M][red] 테스트 추가` 커밋 직후 오케스트레이터가 실패를 직접
+  확인(`red: CONFIRMED` 기록, 처음부터 green이면 재작성 지시) →
+  `[plan N.M][green] 구현` 커밋은 verify 게이트가 독립 확인. reviewer의
+  red→green 기록 감사 삭제, "신규 테스트 존재 + assert 실체성"만 검사 —
+  기록 조작 가능성 제거(커밋·실행 결과는 위조 불가) + opus 입출력 절약.
+- **NEXT TASK를 reviewer에서 오케스트레이터로 이관** (reviewer·execute-plan):
+  reviewer 출력을 VERDICT/BLOCKING/NON-BLOCKING(최대 5) + 추적표·VERIFIED로
+  고정, 다음 태스크 브리핑 생성 책임은 execute-plan 5로 완전 이관.
+  [P] 그룹 "마지막 리뷰만 NEXT TASK" 특례 삭제. 판정자·계획자 관심사 분리
+  + 태스크 수만큼 곱해지는 출력 토큰 절감.
+- **리뷰 입력 다이어트** (execute-plan·stage-reviewer): reviewer 입력을
+  4종으로 제한(태스크 정의 원문·diff·오케스트레이터 verify 결과 1줄·프로젝트
+  CLAUDE.md) — PROGRESS·설계 문서·이전 태스크 내역 주입 금지. stage-reviewer
+  입력은 브리핑 발췌만(base sha·stage 완료 조건·PROGRESS 해당 stage 섹션·
+  누적 NON-BLOCKING) — PLAN/PROGRESS 전체 주입·직접 읽기 금지.
+- **조건부 승인 게이트** (헌법 §4 라우팅 3번 [유연 기준값]): DECISIONS가
+  없어도 태스크 8개↑ 또는 stage 3개↑ / 신규 파일 5개↑ / 스키마 변경·외부
+  API·의존성 추가 포함이면 계획 출력 후 1회 확인 대기. 소형 계획은 기존대로
+  즉시 실행. 근거: 대기는 토큰 무소모, 어긋난 계획 되돌리기(builder+reviewer
+  재실행)가 게이트 1회보다 항상 비쌈. 기준값은 프로젝트 CLAUDE.md 오버라이드.
+- README: 아키텍처 다이어그램에 게이트·2단 디스패치 반영, 계측에
+  `FAIL(verify-gate)`·`red: CONFIRMED` grep 추가, 모델 티어링 아래 게이트
+  우선 원칙, verify 이식성 → 강제 조건으로 격상. audit C에 계약 4종 추가
+  (TDD 2단·verdict-only·입력 제한·양 게이트 다자 일치).
+
 ## v1.8.2 — 2026-08-15
 프롬프트 캐시 적중률 보존. 캐싱은 Claude Code가 자동 적용하지만 적중은
 접두사(에이전트 정의 + 도구 정의 + CLAUDE.md) 동일성에 달려 있으므로 루프
