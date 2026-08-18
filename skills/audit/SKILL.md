@@ -51,6 +51,12 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   계약 변경 stop-the-world) ↔ execute-plan 중단 조건 (i) ↔ 헌법 §4 중단
   조건 (i) — 3자 일치하는가. builder 계약 파일 임의 수정 = reviewer
   BLOCKING + `.dev-kit-scope` 훅 차단이 명시돼 있는가
+- **타임스탬프 정합 (metrics 계산 성립 조건)**: execute-plan의 기록 계약에
+  태스크 시작 시각(`- 시작:` 1줄)이 명시돼 있는가, 블록 헤더 시각 = 종료
+  시점 해석이 metrics.md 파싱 규칙과 일치하는가, [P] 태스크(메인 트리 기록)·
+  mode B 트랙 태스크(`PROGRESS.<트랙>.md` — 파일명 분리로 머지 시 원문 보존)
+  의 타임스탬프가 통합 시 보존되는가. 새 기록 의무는 `- 시작:` 1줄까지만 —
+  metrics를 위해 그 이상을 루프에 추가하면 안 된다
 - mode B 런처: 발사 명령(`claude -p "/dev-kit:execute-plan track <이름>"`)
   ↔ execute-plan 사전 체크의 `track <이름>` $ARGUMENTS 해석,
   `.track-<이름>.status` 형식(3줄 + 결과 라인) 생산 ↔ 메인 세션 취합 소비,

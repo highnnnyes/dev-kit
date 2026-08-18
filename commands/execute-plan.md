@@ -256,6 +256,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      첫 줄은 아래 구조화 형식을 **그대로** 지킨다 (통계 집계가 이 라인을 grep한다):
      ```
      ## [날짜시각] Task N.M — [PASS|FAIL후PASS|BLOCKED] · 시도 X회 · builder=[모델|by=orchestrator] · reviewer=[sonnet|sonnet→opus|opus(사전승격)|미호출] · tier=[light|standard] · risk=[normal|high]
+     - 시작: [날짜시각] (첫 디스패치 시점 — 블록 헤더 시각이 종료 시점.
+       /dev-kit:metrics의 소요 계산이 이 쌍을 사용한다)
      - 변경: [builder CHANGED 요약]
      - 검증: [reviewer VERIFIED 요약 + 오케스트레이터 verify 게이트 결과]
      - red: [CONFIRMED (orchestrator-run)|재작성 N회 후 CONFIRMED] (TDD 2단
@@ -296,10 +298,11 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      - **mode S/A의 [P] 워크트리 태스크**: PLAN.md·PROGRESS.md가 메인 트리
        소유라 이 amend 규칙의 대상이 아니다 — 워크트리의 `[green]`은 그대로
        두고, 기록은 그룹 머지 후 오케스트레이터가 메인 트리에서 남긴다.
-     - **mode B의 트랙 워크트리**: 트랙이 자기 워크트리의 **트랙 PROGRESS.md를
-       소유·기록**하므로, amend 한정 규칙(PLAN/PROGRESS만)이 트랙 로컬
-       PROGRESS.md에 **동일 적용된다**. 메인 PROGRESS.md에는 통합 스테이지에서
-       트랙 요약만 병합 기록한다 (mode B 런처의 기록 규칙 참조).
+     - **mode B의 트랙 워크트리**: 트랙이 자기 워크트리의 **트랙 로컬
+       `PROGRESS.<트랙>.md`를 소유·기록**하므로, amend 한정 규칙
+       (트랙 PLAN/트랙 PROGRESS만)이 트랙 로컬 파일에 **동일 적용된다**.
+       메인 PROGRESS.md에는 통합 스테이지에서 트랙 요약만 병합 기록한다
+       (mode B 런처의 기록 규칙 참조).
    **그룹 경계 처리 (워크트리 병렬 그룹 한정)**: 그룹 전체 PASS 후:
    1. 오케스트레이터가 메인 트리에서 `wt/<task-id>` 브랜치들을 **순차 머지**
       한다. 충돌 발생 시 `git merge --abort` 후 루프를 중단하고 충돌 파일과
@@ -439,12 +442,15 @@ PLAN.md 헤더가 `mode: B`이고 **사용자 승인이 기록된 경우에만**
   존재. 하나라도 실패하면 **mode A로 강등해 진행하고 사유를 보고한다.**
 
 ### 기록
-- 트랙별 PROGRESS.md는 **각 워크트리에** 남긴다 — 트랙이 소유·기록하며,
-  태스크 루프의 기록 형식(구조화 라인·`- red:`·amend 한정 규칙 포함)을
+- 트랙별 PROGRESS는 **각 워크트리의 `PROGRESS.<트랙>.md`** 에 남긴다 —
+  파일명을 트랙별로 분리해야 머지 시 메인 PROGRESS.md와 충돌하지 않고
+  **태스크별 타임스탬프 원문이 메인 히스토리에 그대로 보존된다**
+  (/dev-kit:metrics가 이 파일들을 읽는다). 트랙이 소유·기록하며, 태스크
+  루프의 기록 형식(구조화 라인·`- 시작:`·`- red:`·amend 한정 규칙 포함)을
   그대로 따른다.
 - 통합 스테이지에서 메인 PROGRESS.md에 **트랙 요약**(태스크 수·재시도율·
-  BLOCKED 수·소요)을 병합 기록한다. 트랙 로컬 PROGRESS 원문은 머지로
-  히스토리에 남으므로 별도 전재하지 않는다.
+  BLOCKED 수·소요)을 병합 기록한다. 트랙 로컬 `PROGRESS.<트랙>.md` 원문은
+  머지로 그대로 남으므로 별도 전재하지 않는다.
 
 ## 경량화 규칙 (토큰 관리 — 헌법 §4 기본 검증 루프의 명시적 예외)
 - 자명한 소형 태스크(설정 한 줄, 자명한 오타 수준)는 builder 없이 직접 처리해도 된다.

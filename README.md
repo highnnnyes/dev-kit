@@ -1,7 +1,17 @@
 # dev-kit
 
-계획 기반 자율 개발 루프 플러그인. 기능 요청 하나를 던지면 계획 수립 →
-태스크 단위 구현 → 독립 검증 → 기록까지 사용자 개입 없이 진행한다.
+1. 기능 요청 하나를 던지면 계획 수립 → 태스크 단위 구현 → 독립 리뷰 → 커밋까지 사용자 개입 없이 도는 Claude Code 플러그인이다.
+2. 검증을 신뢰하지 않고 계측한다 — verify는 오케스트레이터가 독립 실행하고, TDD 증거는 git 커밋으로 남으며, 재시도율·리뷰 명령이 로그로 감사된다.
+3. Claude Code로 실제 프로젝트를 돌리는 개발자를 위한 것이다.
+
+<!-- 데모 녹화 절차: mode A 완주 런에서 `asciinema rec → agg`로 docs/demo.gif 생성 후 아래 주석 해제 -->
+<!-- ![demo](docs/demo.gif) -->
+
+## Measured on real runs (실측 지표)
+
+<!-- /dev-kit:metrics 출력으로 교체 -->
+
+---
 
 세 소스의 원칙을 결합해 설계했다:
 - **Karpathy 4원칙** — 추측 금지, 최소 코드, 요청 밖 코드 불가침, 검증 가능한 목표
@@ -68,6 +78,7 @@
 |---|---|
 | `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 경계 파일·계약 테스트, 이후 태스크는 계약에만 의존, mode B는 트랙 manifest 기록) |
 | `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, standard 코드 태스크 **TDD 2단 디스패치**([red] 테스트 커밋→오케스트레이터 red 확인→[green] 구현 커밋), **verify 선행 게이트**(reviewer 호출 전 verify 직접 실행 — 실패 시 리뷰 없이 재작업, 안전 제약 상위 적용), 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(입력 4종 제한, 커밋 전 리뷰 흐름은 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 다음 태스크 브리핑 작성(NEXT TASK 이관분), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증(입력은 발췌만), **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator`·`red:` 확인 포함). **mode 분기**: S=순차 강등, A=[P] 리뷰 병렬화+인터리빙 슬롯(상한 3, 게이트·리뷰 밀도 유지), B=**headless 트랙 런처 [엄격]**(계약 스테이지 직렬 완료 → 트랙 워크트리+manifest → `claude -p` 백그라운드 발사, 폴링 없이 status 파일 취합 — `--dangerously-skip-permissions` 절대 금지, 트랙은 push·머지 권한 없음, 사전 점검 실패 시 A로 강등) |
+| `commands/metrics.md` | PROGRESS 기록 → 실측 지표 산출 (오케스트레이터 직접 절차, 서브에이전트 없음). 재시도율(FAIL 유형 분해)·소요(병렬 합집합)·병렬 효율·red 확인 비율 + 비교 모드(단축률). 기존 기록에서만 계산 — 새 기록 의무는 `- 시작:` 1줄뿐. **파싱 실패는 `n/a (사유)` [엄격]** — 추정 금지 |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD 2단 디스패치([red] 테스트만 작성 / [green] 최소 구현 — 커밋은 오케스트레이터), 범위 밖 수정 금지, verify 통과 후에만 완료 선언(red 단계는 의도된 실패가 완료 조건), 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
 | `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). 입력은 브리핑 4종(태스크 정의·diff·오케스트레이터 verify 결과 1줄·프로젝트 CLAUDE.md)으로 제한 — PROGRESS·설계 문서·이전 태스크 내역 주입 금지. diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING(최대 5) 구분, TDD 검사는 신규 테스트 존재·assert 실체성만(red/green 사실 확인은 오케스트레이터 실행 + git 히스토리 소관). **verdict만 반환** — 다음 태스크 브리핑(NEXT TASK)은 작성하지 않는다(오케스트레이터로 이관). 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
@@ -227,7 +238,23 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 /dev-kit:write-plan [설명]     # 계획만 만들고 실행 안 함
 /dev-kit:execute-plan          # 실행만 (첫 미완료 태스크부터)
 /dev-kit:execute-plan stage 2  # 특정 stage만
+/dev-kit:metrics [경로]        # PROGRESS 기록 → 실측 지표 스니펫 (인자 2개면 비교 모드)
 ```
+
+### 실측 지표 (`/dev-kit:metrics`)
+
+PROGRESS.md(+archive, mode B는 `PROGRESS.<트랙>.md` 포함)를 파싱해
+재시도율(FAIL 유형 분해)·태스크 소요·총 월클럭(병렬 구간은 합집합)·
+병렬 효율(mode A/B)·red 확인 비율을 계산하고, README에 그대로 붙일 수 있는
+표+판정 코멘트를 출력한다. 판단이 필요 없는 기계적 절차라 오케스트레이터가
+직접 수행한다(서브에이전트 없음 — 토큰 ≈ 0). **파싱 실패 항목은 추정으로
+메우지 않고 `n/a (사유)`로 표기한다 [엄격]** — 지표 신뢰성이 존재 이유다.
+
+측정 프로토콜 (상단 "Measured on real runs" 채우기):
+1. 비슷한 규모의 계획을 순차(mode S)·mode A로 각 1회 완주한다
+2. 각각 `/dev-kit:metrics`를 실행한다
+3. `/dev-kit:metrics <계획A> <계획B>` 비교 출력(단축률 포함)을
+   실측 지표 섹션에 붙인다
 
 ---
 
@@ -279,7 +306,7 @@ rm .dev-kit-pause      # 해제 — 이후 "진행해"로 재개
 | 파일 | 내용 | 용도 |
 |---|---|---|
 | `PLAN.md` | 뭘 할지 + 체크 상태 | 진행률 파악, 세션 재개 기준점 |
-| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델 또는 `by=orchestrator`·tier·risk) + 리뷰어가 실행한 Bash 명령 목록(원문) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
+| `PROGRESS.md` | 태스크별 실행 일지 — 구조화 헤더(결과·시도 횟수·모델 또는 `by=orchestrator`·tier·risk) + `- 시작:` 시각(헤더 시각=종료 — metrics의 소요 계산 쌍) + 리뷰어가 실행한 Bash 명령 목록(원문) + 변경 내용, 검증 결과, FAIL 사유(유형 태그), 넘긴 사항. stage 통합검증 결과도 동일 형식. **롤링 요약**: stage 종료 시 해당 stage 블록을 요약 한 줄로 압축 — 최근 5개 태스크만 전문 유지, 파일 크기(=stage-reviewer 입력)가 상수로 유지된다 | 자리 비웠다 와서 훑기, 문제 역추적, 검증 통계 집계 |
 | `PROGRESS.archive.md` | 압축된 stage 블록의 원문 보관소 (stage 종료 시 자동 append) | 추적 가능성 유지, 검증 통계의 과거분 집계. 루프의 어떤 에이전트도 읽지 않는다 |
 | git 커밋 | 태스크당 1커밋 `[plan 1.2] 목표` | 태스크 단위 diff·bisect·롤백 |
 | `ARCHITECTURE.md` + `docs/` | 시스템 현재 상태 (구조·계약·데이터 모델), `docs/decisions/`는 ADR(불변) | builder의 탐색 대체 컨텍스트, 결정 맥락 보존 (docs 스킬 관리) |
@@ -488,7 +515,9 @@ v1.7에서 이 규율에 **관측 수단**을 붙였다: 리뷰어는 VERIFIED�
 모든 스킬 상단과 헌법 주요 섹션에 규율 강도를 표기한다:
 - **[엄격]** — 정확히 따른다. 맥락·급함을 이유로 완화하지 않는다:
   TDD(§3), debugging 4단계, 검증 루프(§4)·verify 선행 게이트, 안전
-  가드레일(§5), 계약 스테이지(Stage 0), mode B 런처 안전 제약, audit.
+  가드레일(§5), 계약 스테이지(Stage 0), mode B 런처 안전 제약, audit,
+  metrics의 n/a 규칙(파싱 실패를 추정으로 메우지 않는다)·실측 지표 섹션의
+  숫자 조작 금지(지어낸 수치·가짜 데모 금지 — 실측 출력으로만 채운다).
 - **[유연]** — 원칙을 유지하되 적용 방식은 맥락에 맞게 적응한다:
   brainstorming 질문 방식, docs 문서 형식, 세리머니 규모(§3),
   조건부 승인 게이트·mode 판정 기준값(8/15 — 프로젝트 CLAUDE.md 오버라이드).
@@ -551,7 +580,8 @@ haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 �
 ## 토큰 관리
 
 이 워크플로우는 태스크마다 서브에이전트를 띄우므로 단일 세션 대비 토큰을
-많이 쓴다 (서브에이전트 다용 워크플로우는 수 배 소모 가능). 내장된 완화 장치:
+많이 쓴다 (서브에이전트 다용 워크플로우는 수 배 소모 가능 — 추정, 실측으로
+교체 예정: /dev-kit:metrics). 내장된 완화 장치:
 
 - PROGRESS.md 롤링 요약 — stage 종료 시 압축으로 stage-reviewer 입력 상수화
 - 자명한 소형 태스크는 오케스트레이터가 builder 없이 직접 처리

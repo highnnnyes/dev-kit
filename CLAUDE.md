@@ -7,7 +7,7 @@ Claude Code 플러그인 리포. 순수 마크다운 — 빌드·테스트·런�
 - 헌법 템플릿 (자동 라우팅·검증 루프·가드레일) → `CLAUDE.md.template`
 - 사용법·설치·튜닝·환경별 함정 → `README.md`
 - 서브에이전트 (builder / builder-light / reviewer / stage-reviewer) → `agents/`
-- 커맨드 (write-plan / execute-plan) → `commands/`
+- 커맨드 (write-plan / execute-plan / metrics) → `commands/`
 - 스킬 (brainstorming / grill / docs / debugging / audit / _template) → `skills/`
 - 버전별 변경 이력 → `CHANGELOG.md`
 
