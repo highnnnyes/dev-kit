@@ -48,6 +48,10 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
 다음은 **수정하지 않고** 목록으로 보고한다:
 - 부수효과 있는 verify: DB 변경·파일 삭제·네트워크 쓰기
 - 개발·공유 DB를 물고 있는 테스트 설정
+- cross-role 의존 verify: role이 다른 태스크의 구현·실행 상태를 무는
+  verify (write-plan 계약 스테이지의 cross-role verify 의존 금지 위반 —
+  [P] 불성립·순차 강등의 1순위 원인). 보고에 분리안("mock 대상 verify +
+  통합 stage 태스크")을 함께 제시한다.
 
 해당 태스크 줄 끝에 `· hold: migrate(위험 보고 — 사용자 결정 대기)` 표시를
 붙인다 — execute-plan은 이 표시가 있는 태스크를 건너뛰고 보고에 포함한다.

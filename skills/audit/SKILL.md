@@ -53,7 +53,10 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   BLOCKING + `.dev-kit-scope` 훅 차단이 명시돼 있는가
 - cross-role verify 금지 규칙: write-plan(계약 스테이지 [엄격]) ↔ 헌법 §4
   요약 ↔ README — 3자 일치하는가. Stage 0 산출물 정의(경계 파일 + 계약
-  테스트 + 대역 + 단일 소스 파생)가 write-plan·README에서 일치하는가
+  테스트 + 대역 + 단일 소스 파생)가 write-plan·README에서 일치하는가.
+  [P] verify 의존 명시 규칙([엄격] — 외부 의존은 계약 산출물 경로로 명시,
+  불가하면 [P] 금지)이 write-plan·README에 존재하는가, migrate 위험 항목
+  보고에 cross-role 의존 verify가 포함되는가
 - **타임스탬프 정합 (metrics 계산 성립 조건)**: execute-plan의 기록 계약에
   태스크 시작 시각(`- 시작:` 1줄)이 명시돼 있는가, 블록 헤더 시각 = 종료
   시점 해석이 metrics.md 파싱 규칙과 일치하는가, [P] 태스크(메인 트리 기록)·
