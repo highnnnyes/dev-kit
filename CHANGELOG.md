@@ -3,6 +3,37 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.13.0 — 2026-08-21
+부서 병렬(contract-first) 강화. 원칙: **병렬의 실질 관문은 파일 비중첩이
+아니라 verify 독립성이다** — role이 다른 태스크의 verify가 서로의 구현을
+물면 [P] 조건을 만족해도 병렬이 원천 불성립한다. 검증 강도 하향 없음 —
+cross-role 검증은 삭제가 아니라 "mock 대상 태스크 검증 + 통합 stage
+검증"으로의 분리다.
+
+- **cross-role verify 의존 금지** (write-plan 계약 스테이지 [엄격] 신설):
+  role이 다른 태스크의 verify는 타 role 태스크의 구현 코드·실행 상태에
+  의존할 수 없다 — 의존 가능한 것은 Stage 0 계약 산출물(타입·스키마·mock·
+  픽스처)뿐. 위반 형태의 verify(예: frontend verify가 실제 backend API
+  호출)는 작성 금지, 그 검증은 통합 stage의 별도 태스크로 분리한다.
+- **Stage 0 산출물에 대역(test double) 포함** (write-plan): 산출물 3종 =
+  경계 파일 + 계약 테스트 + 각 role이 상대 구현 없이 자기 verify를 돌릴
+  대역(mock 서버/응답 픽스처/스크래치 DB 스키마). **단일 소스 파생
+  [엄격]** — 타입·mock·계약 테스트는 하나의 계약 소스(예: OpenAPI)에서
+  파생 생성한다 (손으로 쓴 mock은 drift 1순위 — docs 스킬 "손으로 옮겨
+  적는 명세" 원칙과 동일 근거). PLAN.md 형식 예시 갱신: 0.2 mock 파생
+  태스크(tier=standard — 계약 스테이지 고정 유지), Stage 1 frontend
+  verify를 mock 대상으로, 마지막 통합 stage(mock 제거·실배선 + 통합
+  테스트) 예시 추가.
+- **연동 반영**: grill "verify 실효성" 심문에 cross-role 의존 verify 검출
+  추가(병렬 성립을 막는 1순위 원인), 헌법 §4 계약 스테이지 요약 갱신
+  (이후 태스크의 verify는 계약 산출물에만 의존 — cross-role 구현 의존
+  금지), audit C에 3자 일치 검사 2항목 추가(cross-role 금지 규칙·Stage 0
+  산출물 정의), README 갱신(아키텍처 다이어그램·구성 요소 표·튜닝 가이드
+  "[P]가 안 나오고 순차로만 계획됨" 항목).
+- mode A 진입 기준은 **현행 유지**(태스크 8개 이상 + role 2종 — D1 결정:
+  소형 계획은 Stage 0 오버헤드 대비 순차가 이득, 보수적 강등 유지).
+  execute-plan은 수정 없음 — [P] 성립은 계획 시점 규칙이다.
+
 ## v1.12.0 — 2026-08-18
 PATCH 4 — 프로젝트 셋업 완전 자동화. 원칙: **판정과 기입은 자동, 위험
 판단은 보고** — 사람의 일은 보고를 읽고 결정하는 것까지만 남긴다. 이전에

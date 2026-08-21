@@ -32,8 +32,8 @@
    ↓        (대형/고위험 시) grill: 설계/계획 심문
 /write-plan ──→ PLAN.md               ← stage → verify 하나 단위 태스크, role/tier/risk 태그, [P]병렬 그룹
    │                                     + mode 헤더 판정: S(8개 미만, 순차) / A(8개+ & role 2종+) / B(15개+ & 트랙 비중첩)
-   │                                     mode A/B는 Stage 0 = 계약 스테이지 [엄격] (경계 파일 + mock 계약 테스트,
-   │                                     이후 태스크는 구현이 아니라 계약에만 의존 — 계약 변경은 stop-the-world)
+   │                                     mode A/B는 Stage 0 = 계약 스테이지 [엄격] (경계 파일 + 계약 테스트 + 대역(mock/픽스처) — 단일 계약 소스에서 파생,
+   │                                     이후 태스크는 구현이 아니라 계약에만 의존, verify도 계약 산출물만 의존(cross-role 구현 의존 금지) — 계약 변경은 stop-the-world)
    ↓ (DECISIONS 없으면: 소형 계획은 대기 없이 · 대형 계획은 1회 확인 — 조건부 승인 게이트.
       mode B는 항상 승인 대기 — 트랙 분할안 출력 후 승인 시 headless 트랙 런처)
 /execute-plan (메인 = 오케스트레이터, 직접 구현 안 함 · mode 헤더로 분기, 없으면 S)
@@ -76,7 +76,7 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 경계 파일·계약 테스트, 이후 태스크는 계약에만 의존, mode B는 트랙 manifest 기록) + **프로비저닝 [엄격]**(mode A 판정 시 worktree 선언·테스트 리소스 규칙을 프로젝트 CLAUDE.md에 직접 기입 — 수정 파일은 PLAN.md·프로젝트 CLAUDE.md 2개 한정, `프로비저닝: …` 1줄 보고) + **mode 재판정**(계획 수정·stop-the-world 후 — S→A 자동, A→S는 진행 중 [P] 없을 때만, B 상향은 승인 게이트 유지 [엄격]) |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 산출물은 경계 파일·계약 테스트·**대역**(각 role이 상대 구현 없이 자기 verify를 돌릴 mock 서버/픽스처/스크래치 DB 스키마)이고 단일 계약 소스에서 파생 생성 [엄격], 이후 태스크는 계약에만 의존하며 **cross-role verify 의존 금지 [엄격]** — verify는 타 role 구현·실행 상태가 아니라 계약 산출물만 의존, 실배선 검증은 통합 stage 태스크로 분리. mode B는 트랙 manifest 기록) + **프로비저닝 [엄격]**(mode A 판정 시 worktree 선언·테스트 리소스 규칙을 프로젝트 CLAUDE.md에 직접 기입 — 수정 파일은 PLAN.md·프로젝트 CLAUDE.md 2개 한정, `프로비저닝: …` 1줄 보고) + **mode 재판정**(계획 수정·stop-the-world 후 — S→A 자동, A→S는 진행 중 [P] 없을 때만, B 상향은 승인 게이트 유지 [엄격]) |
 | `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, standard 코드 태스크 **TDD 2단 디스패치**([red] 테스트 커밋→오케스트레이터 red 확인→[green] 구현 커밋), **verify 선행 게이트**(reviewer 호출 전 verify 직접 실행 — 실패 시 리뷰 없이 재작업, 안전 제약 상위 적용), 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(입력 4종 제한, 커밋 전 리뷰 흐름은 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 다음 태스크 브리핑 작성(NEXT TASK 이관분), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증(입력은 발췌만), **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator`·`red:` 확인 포함). **mode 분기**: S=순차 강등, A=[P] 리뷰 병렬화+인터리빙 슬롯(상한 3, 게이트·리뷰 밀도 유지), B=**headless 트랙 런처 [엄격]**(계약 스테이지 직렬 완료 → 트랙 워크트리+manifest → `claude -p` 백그라운드 발사, 폴링 없이 status 파일 취합 — `--dangerously-skip-permissions` 절대 금지, 트랙은 push·머지 권한 없음, 사전 점검 실패 시 A로 강등) |
 | `commands/metrics.md` | PROGRESS 기록 → 실측 지표 산출 (오케스트레이터 직접 절차, 서브에이전트 없음). 재시도율(FAIL 유형 분해)·소요(병렬 합집합)·병렬 효율·red 확인 비율 + 비교 모드(단축률). 기존 기록에서만 계산 — 새 기록 의무는 `- 시작:` 1줄뿐. **파싱 실패는 `n/a (사유)` [엄격]** — 추정 금지 |
 | `commands/migrate.md` | 기존 프로젝트 → 현행 규격 단일 명령. mode 판정·기입(B는 자동 기입 금지 — A로 기입 + "B 후보" 보고) → 프로비저닝 → verify 정리(allowlist 형태로 교체, 필요 시 package.json scripts 추가 — **검증 강도 변경 금지 [엄격]**, 절차형 2종 유지) → **위험 항목 보고 [엄격]**(부수효과 verify·개발/공유 DB 테스트 설정은 수정 없이 목록 보고 + 해당 태스크 `hold:` 표시 — execute-plan이 건너뜀) → 자기 검사(수정 파일 PLAN.md·프로젝트 CLAUDE.md·package.json scripts 3개 한정 [엄격]) 후 `[dev-kit-migrate]` 단일 커밋. **멱등 [엄격]** — 재실행 시 변경 0건 통과 |
@@ -659,6 +659,10 @@ haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 �
   낮춰라 [유연]. "모든 계획을 확인 후 실행"으로 오버라이드하면 항상 대기한다.
 - **verify-gate FAIL이 잦음** → builder 자기 보고가 부정확하다는 신호.
   tier 배분(light 남용)과 브리핑의 verify 명시가 명확한지 재검토하라.
+- **[P]가 안 나오고 순차로만 계획됨** → PLAN.md의 verify들이 타 role 구현을
+  물고 있는지 확인하라. cross-role 의존 verify(예: frontend verify가 실제
+  backend API 호출)는 "mock 대상 verify + 통합 stage 태스크"로 분리하면
+  [P]가 성립한다 (write-plan의 cross-role verify 의존 금지 [엄격]).
 
 ## 환경별 세팅 & 함정
 

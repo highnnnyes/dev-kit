@@ -94,11 +94,25 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 
 ## 계약 스테이지 [엄격] — role 2종 이상 계획
 role이 2종 이상인 계획은 **Stage 0을 계약 스테이지로 강제한다**:
-- 산출물: 타입 정의·API 시그니처·DB 스키마 등 **트랙 간 경계가 되는 파일** +
-  **계약 테스트**(mock 기반 — 각 파트가 계약을 지키는지 검증).
+- 산출물 3종: ① 타입 정의·API 시그니처·DB 스키마 등 **트랙 간 경계가 되는
+  파일**, ② **계약 테스트**(mock 기반 — 각 파트가 계약을 지키는지 검증),
+  ③ **대역(test double)** — 각 role이 상대 구현 없이 자기 verify를 돌릴 수
+  있는 mock 서버/응답 픽스처/스크래치 DB 스키마.
+- **단일 소스 파생 [엄격]**: 타입·mock·계약 테스트는 하나의 계약 소스
+  (예: OpenAPI 스키마)에서 파생 생성한다. 손으로 따로 쓴 mock은 drift
+  1순위다 — 제공자와 소비자가 같은 픽스처로 검증해야 통합 불일치가
+  구조적으로 줄어든다 (docs 스킬 "손으로 옮겨 적는 명세" 원칙과 동일 근거).
 - 이후 모든 태스크는 다른 태스크의 **구현**이 아니라 **계약 파일**에만
   의존하도록 분해한다. 이 조건이 충족되면 [P] 그룹을 적극 부여한다 —
   계약이 경계를 고정하므로 병렬 안전성이 구조적으로 보장된다.
+- **[엄격] cross-role verify 의존 금지**: role이 다른 태스크의 verify는
+  다른 role 태스크의 **구현 코드·실행 상태**에 의존할 수 없다. 의존 가능한
+  것은 Stage 0 계약 산출물(타입·스키마·mock·픽스처)뿐이다. 위반 형태의
+  verify(예: frontend verify가 실제 backend API를 호출)는 작성 금지 —
+  그 검증은 통합 stage의 별도 태스크(mock 제거·실배선 + 통합 테스트)로
+  분리한다. 근거: [P] 조건(의존 없음·파일 비중첩)을 만족해도 verify가
+  타 role 구현을 물면 병렬이 불성립한다 — 병렬의 실질 관문은 파일이
+  아니라 **verify 독립성**이다.
 - 계약 스테이지 태스크는 tier=standard 고정. 대형/고위험 계획이면 grill
   심문 대상에 계약(경계 파일·계약 테스트의 충분성)을 포함한다.
 - **계약 변경은 stop-the-world다**: 실행 중 계약 수정이 필요해지면
@@ -190,13 +204,17 @@ mode: A (근거: 태스크 11개, role 3종, 파일 겹침 없음)
 
 ## Stage 0: 계약 — 완료 조건: 계약 테스트 green (mode A/B만 — S는 생략)
 - [ ] 0.1 [경계 타입·API 시그니처·스키마 + 계약 테스트] · 파일: `contracts/...` (신규) · role: backend · tier: standard · risk: normal · verify: `npm run test -- contracts/...`
+- [ ] 0.2 [계약 소스에서 mock 서버·응답 픽스처 파생 생성] · 파일: `mocks/...` (신규) · role: test · tier: standard · risk: normal · verify: `npm run test -- contracts/...` (0.1 계약 테스트를 mock 대상으로 확장 실행 — red→green)
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
 - [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: `npm run test -- path/to/file.test.ts` (신규 테스트 1~2개 red→green)
-- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: `npm run test -- ...` (신규 테스트 red→green)
+- [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: `npm run test -- ...` (mock 서버 대상 — 신규 테스트 red→green)
 - [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · risk: normal · verify: [방법]
 
 ## Stage 2: ...
+
+## Stage N (마지막): 통합 — 완료 조건: 실배선 통합 테스트 green
+- [ ] N.1 [mock 제거·실배선 + 통합 테스트] · 파일: `...` · role: backend · tier: standard · risk: normal · verify: `npm run test -- integration/...` (신규 통합 테스트 red→green)
 ```
 
 ## 작성 후
