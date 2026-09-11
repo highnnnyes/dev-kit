@@ -35,6 +35,9 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   태스크 한정 해당 화면 섹션 발췌) ↔ reviewer.md 입력 규칙,
   stage-reviewer 브리핑 발췌 4종 ↔ stage-reviewer.md 스코프 —
   양쪽 목록이 일치하는가
+- 화면 휴리스틱 5종(현재 위치·실행 취소·일관성·에러 문구·기억·입력
+  부담): brainstorming "저장 전 휴리스틱 점검" 목록 ↔ grill 화면/플로우
+  각도의 추가 5개 — 항목·문구가 일치하는가
 - verify 선행 게이트: execute-plan 게이트(+안전 제약 allowlist·금지 패턴) ↔
   write-plan "부수효과 없는 verify" 규칙 ↔ PROGRESS `FAIL(verify-gate)` 유형
   ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가. 절차형 verify 허용 목록
