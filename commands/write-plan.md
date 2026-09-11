@@ -8,6 +8,8 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 
 ## 분해 원칙
 1. 먼저 관련 코드를 실제로 읽어라. 코드를 안 본 계획은 금지 (파일 경로·기존 패턴 확인).
+   `docs/screens.md`가 있으면 입력으로 함께 읽는다 (brainstorming이 확정한
+   화면 스펙 — UI 태스크의 verify 기준이 된다).
 2. **단계(stage)**: 독립적으로 검증 가능한 기능 단위. 각 단계는 완료 조건을 가진다.
 3. **태스크(task)**: 한 단계를 **verify 하나로 통과/실패가 갈리는 단위 —
    신규/확장 테스트 1~2개 + 그 구현**으로 쪼갠 것 (대략 5~10분).
@@ -39,6 +41,11 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
      오케스트레이터가 절차로 직접 수행하므로 명령 제약의 대상이 아니지만,
      목록 밖의 비-셸 verify는 실행 시 게이트 정지 대상이므로 작성하지 마라.
      목록 추가는 헌법 개정으로만 가능하다.)
+     **[엄격] role=frontend 태스크의 verify에는 대상 화면을
+     `docs/screens.md#화면명 기준` 형태로 명시한다** (v1.13.1의 [P] verify
+     경로 명시와 같은 패턴 — 누락이 grep으로 드러난다). `docs/screens.md`가
+     없는 UI 태스크는 태스크로 만들지 말고 DECISIONS로 올려 계획 실행 전에
+     멈춰라 — 화면 스펙 없는 UI 구현은 builder 즉흥이 된다.
    - **role 태그**: 이 태스크에 맞는 전문 역할 하나 — 예: `frontend`, `backend`,
      `db`, `test`, `infra`, `docs`. 실행 시 builder에게 해당 전문가 페르소나가
      주입된다. 애매하면 `general`.
@@ -75,6 +82,9 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    포함되면 해당 stage 마지막에 문서 태스크를 추가하라 (docs 스킬 기준 적용):
    `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · risk: normal · verify: 문서-코드 drift 스캔 통과`
    구조 변경이 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉이다.
+   **화면 추가·흐름 변경이 포함된 stage**도 동일 패턴으로 말미에 추가한다:
+   `- [ ] N.x docs/screens.md 갱신 · role: docs · tier: standard · risk: normal · verify: 문서-코드 drift 스캔 통과`
+   화면 변경이 없는 stage에는 넣지 않는다.
 7. **하드닝 태스크**: 프로젝트에 DB·볼륨·외부 상태가 있는데 루트에
    `HARDENING.md`가 없으면 **Stage 1에 harden 태스크를 넣는다** (harden 스킬 기준):
    `- [ ] 1.x 환경 하드닝 (L1 권한 우선) · 파일: `HARDENING.md` (신규) · role: infra · tier: standard · risk: high · verify: 점검표 각 항목의 증거 칸 충족`

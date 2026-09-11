@@ -9,7 +9,21 @@
 
 ## Measured on real runs (실측 지표)
 
-<!-- /dev-kit:metrics 출력으로 교체 -->
+myroquant (mode A) · 집계: 2026-09-12, `/dev-kit:metrics` 출력 원문:
+
+| 지표 | 값 |
+|---|---|
+| 입력 파일 | `PROGRESS.md` 191블록 · `PROGRESS.archive.md` 198블록 (집계 범위: 2026-09 종료 태스크 116건) |
+| 태스크 (완료/중단) | 116 (116/0) |
+| 재시도율 (FAIL÷태스크) | 30.2% (35/116) — verify-gate 2 · 리뷰 FAIL 23(기능 결함 12 · verify 미충족 6 · 기타 4 · 컨벤션 위반 1) · 유형 미기재 10 |
+| 소요 중앙값 — 시도 1회 한정 | 17.5m (n=68) |
+| 소요 중앙값 — tier=light 한정 | 13.0m (n=13) |
+| 소요 중앙값 — 300m 초과 제외 | 21.0m (n=85, 제외 1건) — `- 시작:` 누락 30건 제외 |
+| 총 월클럭 (병렬 합집합) | 3377m (시작 시각 있는 86건 한정) |
+| 병렬 효율 (mode A) | 1.01× (상한 3 대비 34%) |
+| red: CONFIRMED | 67/86 (78%) — `- red:` 줄 부재 14건 |
+
+단일 프로젝트 스냅샷 — 순차 vs mode A 비교는 병렬 효율 1.0× 초과 런이 나오면 추가.
 
 ---
 
@@ -29,8 +43,10 @@
 [자동 라우팅 — dev/CLAUDE.md]         ← 커맨드 없이도 요청을 분류해 절차 시작
    ↓
 (요구사항 모호 시) brainstorming ──→ DESIGN.md   ← 질문으로 설계 확정
-   ↓        (대형/고위험 시) grill: 설계/계획 심문
+   │                                  + docs/screens.md (UI가 있으면 — 화면 스펙·시나리오 걷기 [엄격], 3화면+는 builder-light 로파이 목업)
+   ↓        (대형/고위험 시) grill: 설계/계획 심문 (화면/플로우 각도 포함)
 /write-plan ──→ PLAN.md               ← stage → verify 하나 단위 태스크, role/tier/risk 태그, [P]병렬 그룹
+   │                                     (docs/screens.md 있으면 입력 — frontend verify에 `docs/screens.md#화면명 기준` 명시 [엄격])
    │                                     + mode 헤더 판정: S(8개 미만, 순차) / A(8개+ & role 2종+) / B(15개+ & 트랙 비중첩)
    │                                     mode A/B는 Stage 0 = 계약 스테이지 [엄격] (경계 파일 + 계약 테스트 + 대역(mock/픽스처) — 단일 계약 소스에서 파생,
    │                                     이후 태스크는 구현이 아니라 계약에만 의존, verify도 계약 산출물만 의존(cross-role 구현 의존 금지) — 계약 변경은 stop-the-world)
@@ -76,17 +92,17 @@
 
 | 파일 | 역할 |
 |---|---|
-| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 산출물은 경계 파일·계약 테스트·**대역**(각 role이 상대 구현 없이 자기 verify를 돌릴 mock 서버/픽스처/스크래치 DB 스키마)이고 단일 계약 소스에서 파생 생성 [엄격], 이후 태스크는 계약에만 의존하며 **cross-role verify 의존 금지 [엄격]** — verify는 타 role 구현·실행 상태가 아니라 계약 산출물만 의존, 실배선 검증은 통합 stage 태스크로 분리, [P] 태스크 verify의 외부 의존은 계약 산출물 경로로 명시(불가하면 [P] 금지 — 위반이 verify 문구에서 grep으로 관측된다). mode B는 트랙 manifest 기록) + **프로비저닝 [엄격]**(mode A 판정 시 worktree 선언·테스트 리소스 규칙을 프로젝트 CLAUDE.md에 직접 기입 — 수정 파일은 PLAN.md·프로젝트 CLAUDE.md 2개 한정, `프로비저닝: …` 1줄 보고) + **mode 재판정**(계획 수정·stop-the-world 후 — S→A 자동, A→S는 진행 중 [P] 없을 때만, B 상향은 승인 게이트 유지 [엄격]) |
-| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, standard 코드 태스크 **TDD 2단 디스패치**([red] 테스트 커밋→오케스트레이터 red 확인→[green] 구현 커밋), **verify 선행 게이트**(reviewer 호출 전 verify 직접 실행 — 실패 시 리뷰 없이 재작업, 안전 제약 상위 적용), 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(입력 4종 제한, 커밋 전 리뷰 흐름은 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 다음 태스크 브리핑 작성(NEXT TASK 이관분), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증(입력은 발췌만), **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator`·`red:` 확인 포함). **mode 분기**: S=순차 강등, A=[P] 리뷰 병렬화+인터리빙 슬롯(상한 3, 게이트·리뷰 밀도 유지), B=**headless 트랙 런처 [엄격]**(계약 스테이지 직렬 완료 → 트랙 워크트리+manifest → `claude -p` 백그라운드 발사, 폴링 없이 status 파일 취합 — `--dangerously-skip-permissions` 절대 금지, 트랙은 push·머지 권한 없음, 사전 점검 실패 시 A로 강등) |
-| `commands/metrics.md` | PROGRESS 기록 → 실측 지표 산출 (오케스트레이터 직접 절차, 서브에이전트 없음). 재시도율(FAIL 유형 분해)·소요(병렬 합집합)·병렬 효율·red 확인 비율 + 비교 모드(단축률). 기존 기록에서만 계산 — 새 기록 의무는 `- 시작:` 1줄뿐. **파싱 실패는 `n/a (사유)` [엄격]** — 추정 금지 |
+| `commands/write-plan.md` | 설계 → PLAN.md 분해. 코드를 실제로 읽고 계획, 태스크마다 파일 경로·verify·role·tier·risk 필수, standard 태스크 verify는 신규/확장 테스트 명시 필수, **verify는 부수효과 없는 패키지/빌드 스크립트 형태만**(오케스트레이터가 직접 실행하는 게이트 입력 — DB 테스트는 테스트 전용 리소스 확인 필수, 불확실하면 DECISIONS로), 아키텍처 결정은 DECISIONS로 분리. **실행 모드 판정**(`mode: S\|A\|B` 헤더, 기준값 8/15 [유연], 애매하면 보수적으로 낮은 모드) + **계약 스테이지**(role 2종+ 계획의 Stage 0 [엄격] — 산출물은 경계 파일·계약 테스트·**대역**(각 role이 상대 구현 없이 자기 verify를 돌릴 mock 서버/픽스처/스크래치 DB 스키마)이고 단일 계약 소스에서 파생 생성 [엄격], 이후 태스크는 계약에만 의존하며 **cross-role verify 의존 금지 [엄격]** — verify는 타 role 구현·실행 상태가 아니라 계약 산출물만 의존, 실배선 검증은 통합 stage 태스크로 분리, [P] 태스크 verify의 외부 의존은 계약 산출물 경로로 명시(불가하면 [P] 금지 — 위반이 verify 문구에서 grep으로 관측된다). mode B는 트랙 manifest 기록) + **프로비저닝 [엄격]**(mode A 판정 시 worktree 선언·테스트 리소스 규칙을 프로젝트 CLAUDE.md에 직접 기입 — 수정 파일은 PLAN.md·프로젝트 CLAUDE.md 2개 한정, `프로비저닝: …` 1줄 보고) + **mode 재판정**(계획 수정·stop-the-world 후 — S→A 자동, A→S는 진행 중 [P] 없을 때만, B 상향은 승인 게이트 유지 [엄격]) + **화면 스펙 연동**(`docs/screens.md` 있으면 입력으로 읽고 role=frontend verify에 `docs/screens.md#화면명 기준` 명시 [엄격] — screens.md 없는 UI 태스크는 DECISIONS로 정지, 화면 추가·흐름 변경 stage 말미에 screens.md 갱신 태스크) |
+| `commands/execute-plan.md` | 실행 루프 오케스트레이션. 브리핑 작성, tier 라우팅, standard 코드 태스크 **TDD 2단 디스패치**([red] 테스트 커밋→오케스트레이터 red 확인→[green] 구현 커밋), **verify 선행 게이트**(reviewer 호출 전 verify 직접 실행 — 실패 시 리뷰 없이 재작업, 안전 제약 상위 적용), 병렬 디스패치(**워크트리 격리** — `worktree:` 선언 시에만, off면 순차 강등), 디스패치 전 `.dev-kit-scope` 생산(훅의 스코프 밖 쓰기 차단 입력), 리뷰 루프(입력 4종 제한 + 화면 태스크 한정 screens.md 해당 화면 발췌, 커밋 전 리뷰 흐름은 CHANGED 한정 `git add -N`으로 신규 파일 스코프 확보), 다음 태스크 브리핑 작성(NEXT TASK 이관분), 그룹 머지 + **머지 후 통합 검증 게이트(B-5)**, stage 경계 통합 검증(입력은 발췌만), **RESUME 블록** 갱신(stage 완료·중단 시), 일시정지, 기록(리뷰 명령 목록·`by=orchestrator`·`red:` 확인 포함). **mode 분기**: S=순차 강등, A=[P] 리뷰 병렬화+인터리빙 슬롯(상한 3, 게이트·리뷰 밀도 유지), B=**headless 트랙 런처 [엄격]**(계약 스테이지 직렬 완료 → 트랙 워크트리+manifest → `claude -p` 백그라운드 발사, 폴링 없이 status 파일 취합 — `--dangerously-skip-permissions` 절대 금지, 트랙은 push·머지 권한 없음, 사전 점검 실패 시 A로 강등) |
+| `commands/metrics.md` | PROGRESS 기록 → 실측 지표 산출 (오케스트레이터 직접 절차, 서브에이전트 없음). 재시도율(FAIL 유형 분해)·소요(중앙값 3분리 — 시도 1회 한정·tier=light 한정·300분 초과 이상치 제외)·총 월클럭(병렬 합집합)·병렬 효율·red 확인 비율(+`- red:` 줄 부재 건수 별도 표기) + 비교 모드(단축률). **출력 첫 행은 실제로 파싱한 입력 파일 경로+블록 수 [엄격]**(못 연 파일은 `없음` — 읽지 않은 파일을 읽었다고 출력하는 결함 차단). 기존 기록에서만 계산 — 새 기록 의무는 `- 시작:` 1줄뿐. **파싱 실패는 `n/a (사유)` [엄격]** — 추정 금지 |
 | `commands/migrate.md` | 기존 프로젝트 → 현행 규격 단일 명령. mode 판정·기입(B는 자동 기입 금지 — A로 기입 + "B 후보" 보고) → 프로비저닝 → verify 정리(allowlist 형태로 교체, 필요 시 package.json scripts 추가 — **검증 강도 변경 금지 [엄격]**, 절차형 2종 유지) → **위험 항목 보고 [엄격]**(부수효과 verify·개발/공유 DB 테스트 설정·cross-role 의존 verify는 수정 없이 목록 보고 + 해당 태스크 `hold:` 표시 — execute-plan이 건너뜀) → 자기 검사(수정 파일 PLAN.md·프로젝트 CLAUDE.md·package.json scripts 3개 한정 [엄격]) 후 `[dev-kit-migrate]` 단일 커밋. **멱등 [엄격]** — 재실행 시 변경 0건 통과 |
 | `agents/builder.md` | 태스크 1개를 신선한 컨텍스트에서 구현 (sonnet). tier=standard 코드 태스크는 TDD 2단 디스패치([red] 테스트만 작성 / [green] 최소 구현 — 커밋은 오케스트레이터), 범위 밖 수정 금지, verify 통과 후에만 완료 선언(red 단계는 의도된 실패가 완료 조건), 막히면 BLOCKED 보고 |
 | `agents/builder-light.md` | tier=light 태스크(보일러플레이트·설정·픽스처·단순 CRUD) 전담 경량 빌더 (haiku). 판단이 필요하면 즉시 BLOCKED — 추측하지 않는 것이 성능. verify 2회 실패 시 조기 포기, 상위 티어(builder)로 승급 |
-| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). 입력은 브리핑 4종(태스크 정의·diff·오케스트레이터 verify 결과 1줄·프로젝트 CLAUDE.md)으로 제한 — PROGRESS·설계 문서·이전 태스크 내역 주입 금지. diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING(최대 5) 구분, TDD 검사는 신규 테스트 존재·assert 실체성만(red/green 사실 확인은 오케스트레이터 실행 + git 히스토리 소관). **verdict만 반환** — 다음 태스크 브리핑(NEXT TASK)은 작성하지 않는다(오케스트레이터로 이관). 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게) |
-| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 입력은 브리핑 발췌로 제한(base sha·stage 완료 조건·PROGRESS 해당 stage 섹션·누적 NON-BLOCKING — PLAN/PROGRESS 전체 파일 주입·직접 읽기 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안. VERIFIED에 실행 명령 전량 기록. **오케스트레이터 직접 처리 태스크가 있는 stage는 생략 조건이 전부 무효** — 그 diff의 유일한 독립 검증층 |
-| `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프 |
-| `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
-| `skills/docs/` | 개발자용 기술 문서 4종(ARCHITECTURE.md·API 명세·데이터 모델·ADR) 작성/갱신/drift 검사. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
+| `agents/reviewer.md` | 읽기 전용 검증자 (sonnet 1차, FAIL 시 opus 승격 재검증 · `risk: high`는 처음부터 opus — 아래 모델 티어링 참조). 입력은 브리핑 4종(태스크 정의·diff·오케스트레이터 verify 결과 1줄·프로젝트 CLAUDE.md, +화면 태스크 한정 ⑤ screens.md 해당 화면 발췌)으로 제한 — PROGRESS·설계 문서·이전 태스크 내역 주입 금지. diff 스코프 한정, **요구사항 추적표**(요구사항 전 행 + 실측 증거, 빈칸이면 BLOCKING) + PASS/FAIL + BLOCKING/NON-BLOCKING(최대 5) 구분, TDD 검사는 신규 테스트 존재·assert 실체성만(red/green 사실 확인은 오케스트레이터 실행 + git 히스토리 소관). **verdict만 반환** — 다음 태스크 브리핑(NEXT TASK)은 작성하지 않는다(오케스트레이터로 이관). 읽기 전용은 Bash 경유 수정까지 금지 — **VERIFIED에 실행한 Bash 명령을 전량 원문으로 남긴다**(스코프 준수·읽기 전용 준수를 사후 관측 가능하게). verify가 `docs/screens.md`를 가리키면 브리핑의 화면 발췌를 기준으로 추적표에 그 화면의 주요 액션·결과 피드백·상태 3종을 각각 행으로 검사 — 증거는 테스트 또는 이미 존재하는 `npx playwright screenshot` 결과 이미지 Read만 인정(생성 명령 직접 실행 금지, 코드 읽음 불가) |
+| `agents/stage-reviewer.md` | stage 통합 검증자 (기본 opus, 위험 stage는 fable 승격 — 아래 모델 티어링 참조. 읽기 전용 — Bash 경유 수정도 금지). 입력은 브리핑 발췌로 제한(base sha·stage 완료 조건·PROGRESS 해당 stage 섹션·누적 NON-BLOCKING — PLAN/PROGRESS 전체 파일 주입·직접 읽기 금지). 개별 diff 재리뷰 없이 태스크 간 일관성·통합 동작·stage 완료 조건·설계 drift(DESIGN.md·docs/screens.md)·누적 NON-BLOCKING을 판정, FAIL 시 보완 태스크(PROPOSED TASKS) 제안. VERIFIED에 실행 명령 전량 기록. **오케스트레이터 직접 처리 태스크가 있는 stage는 생략 조건이 전부 무효** — 그 diff의 유일한 독립 검증층 |
+| `skills/brainstorming/` | 아이디어 → 설계 확정. 한 번에 하나씩(객관식 우선) 질문으로 목적·제약·성공 기준·비범위를 좁히고, 2~3개 접근법 제시 후 섹션별 확인을 거쳐 DESIGN.md 작성 → write-plan으로 핸드오프. **UI가 있으면 화면 설계**: 화면 목록 확정(최소 안전선 [엄격])·화면당 액션/결과 피드백/상태 3종·저장 전 시나리오 걷기 [엄격] → `docs/screens.md` (3화면 이상은 builder-light가 로파이 목업 `docs/screens/index.html`) |
+| `skills/grill/` | 기존 설계/계획 심문. 숨은 가정·의존 사슬·실패 모드·verify 실효성(+UI 설계는 화면/플로우 각도 — 클릭 수·상태 3종 누락·피드백 없는 액션)을 추천 답과 함께 압박 검증, 결과를 문서에 반영. 대형/고위험 작업 전용 |
+| `skills/docs/` | 개발자용 기술 문서 5종(ARCHITECTURE.md·API 명세·데이터 모델·ADR·화면 스펙 `docs/screens.md`) 작성/갱신/drift 검사 — screens.md는 코드의 라우트/화면 컴포넌트 목록과 대조해 스펙-화면 불일치를 보고. 1차 독자는 에이전트 — 좋은 문서가 builder의 코드 탐색 토큰을 대체한다. DECISIONS 결정은 ADR로 자동 기록 |
 | `skills/debugging/` | 버그·테스트 실패·예상 밖 동작 시 근본 원인 조사 강제 [엄격]. 재현→격리→역추적→수정+다층 방어 4단계, 종료 조건(재현 테스트 green + 원인 한 문장 설명). 헌법 §5 Iron Law의 실행 절차 |
 | `hooks/block-destructive.sh` + `hooks/hooks.json` | **PreToolUse 훅** (matcher: Bash\|Edit\|Write). ① 데이터 파괴 명령(DROP/TRUNCATE/`delete ... where 1=1`/dropdb/pg_restore/`docker compose down -v`/`docker volume rm`/`rm -rf`/`git reset --hard`/`git push --force`(`-f`·`--force-with-lease` 포함)) 차단. ② **되돌리기 범주 전면 차단** — `git checkout <경로>`(브랜치 전환·`-b`는 허용)/`git restore`/`git clean`/`git stash`(list·show 제외)/`git rm`/`git branch -D`(`-d`는 허용)/`git reflog expire`. ③ **스코프 밖 쓰기 차단** — Edit/Write의 file_path가 `.dev-kit-scope` 목록에 없으면 deny(파일 없으면 검사 생략). 프로젝트 루트 `.dev-kit-allow-destructive`로 패턴별 예외(git 추적 필수·stderr에 흔적). 파서 없음·깨진 입력이면 통과(fail open) |
 | `hooks/precompact-resume.sh` | **PreCompact 훅**. 컨텍스트 자동 압축 직전 PROGRESS.md 최상단의 RESUME 블록을 기계적으로 갱신(다음 태스크·미결 DECISIONS·base sha·워크트리·마지막 커밋) — 압축으로 컨텍스트를 잃기 전 디스크로 flush하는 안전망. PLAN.md+PROGRESS.md 있는 프로젝트에서만 동작, 실패 시 무조건 exit 0 |

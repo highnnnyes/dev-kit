@@ -31,8 +31,10 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   execute-plan 5의 오케스트레이터 몫) ↔ 소비처
   (VERIFIED 명령 목록 ↔ PROGRESS.md `- 리뷰명령:` 전재)
 - 리뷰 입력 제한: reviewer 브리핑 4종(태스크 정의·diff·verify 결과 1줄·
-  프로젝트 CLAUDE.md) ↔ reviewer.md 입력 규칙, stage-reviewer 브리핑 발췌
-  4종 ↔ stage-reviewer.md 스코프 — 양쪽 목록이 일치하는가
+  프로젝트 CLAUDE.md) + 조건부 ⑤(verify가 docs/screens.md를 가리키는
+  태스크 한정 해당 화면 섹션 발췌) ↔ reviewer.md 입력 규칙,
+  stage-reviewer 브리핑 발췌 4종 ↔ stage-reviewer.md 스코프 —
+  양쪽 목록이 일치하는가
 - verify 선행 게이트: execute-plan 게이트(+안전 제약 allowlist·금지 패턴) ↔
   write-plan "부수효과 없는 verify" 규칙 ↔ PROGRESS `FAIL(verify-gate)` 유형
   ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가. 절차형 verify 허용 목록
