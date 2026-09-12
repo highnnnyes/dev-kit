@@ -38,6 +38,12 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
 - 화면 휴리스틱 5종(현재 위치·실행 취소·일관성·에러 문구·기억·입력
   부담): brainstorming "저장 전 휴리스틱 점검" 목록 ↔ grill 화면/플로우
   각도의 추가 5개 — 항목·문구가 일치하는가
+- `ui: interactive|static|none` 헤더: brainstorming 화면 설계 대상 판정
+  3유형(정의·static 축약 규칙·none 자동 좁힘 금지) ↔ write-plan "ui 필드"
+  생산(none은 근거 병기, interactive·static은 screens.md 전제 → DECISIONS)
+  ↔ migrate(없으면 사용자 확인 후 추가 — 추정 금지) ↔ execute-plan
+  stage-reviewer 브리핑 ②(`ui:` 라인 포함) ↔ stage-reviewer (d)의
+  none+.html/.pdf WARNING — 값 이름 3종과 규칙이 일치하는가
 - verify 선행 게이트: execute-plan 게이트(+안전 제약 allowlist·금지 패턴) ↔
   write-plan "부수효과 없는 verify" 규칙 ↔ PROGRESS `FAIL(verify-gate)` 유형
   ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가. 절차형 verify 허용 목록

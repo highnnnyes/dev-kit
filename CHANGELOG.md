@@ -3,6 +3,32 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.14.2 — 2026-09-12
+"UI가 있는 설계"의 정의 부재 봉합. 실측: HTML 리포트 프로젝트에서 "웹 UI
+없음 = 화면 없음"으로 판단해 screens.md 없이 write-plan이 진행됐다.
+원칙: 웹 UI 유무가 아니라 **사람이 보는 화면 산출물** 유무가 기준이고,
+판정은 헤더 필드로 남겨 건너뜀이 grep으로 드러나게 한다(v1.13.1 패턴).
+
+- **brainstorming**: 화면 설계 대상 판정 [엄격] — interactive(조작 화면,
+  절차 전부) / static(리포트·대시보드 스냅샷·이메일 — "화면"=페이지/섹션,
+  액션·입력·뒤로 가기 생략, 상태 3종은 데이터 없음/부분 데이터/생성 실패,
+  시나리오 걷기는 "독자가 답을 찾는 순서" 1개, 휴리스틱은 현재 위치·
+  일관성·에러 문구 3개만) / none(CLI·라이브러리·배치 — 근거 1줄).
+  애매하면 사용자에게 묻고, 모델이 none으로 좁히지 않는다 [엄격].
+  DESIGN.md 템플릿의 화면 섹션에 ui: 값 기록.
+- **write-plan**: PLAN.md 헤더 `ui: interactive | static | none` [엄격] —
+  static·interactive는 docs/screens.md 전제(없으면 DECISIONS 정지 — 기존
+  규칙), none은 근거 1줄 병기. static이면 페이지/섹션 생성 태스크에 role
+  무관 `docs/screens.md#섹션명 기준` 명시.
+- **migrate**: `ui:` 라인 없으면 사용자 확인 후 추가(기본값 추정 금지
+  [엄격] — "판정과 기입은 자동" 원칙의 유일한 예외). interactive·static인데
+  screens.md 없으면 위험 보고 항목.
+- **stage-reviewer**: `ui: none`인데 통합 diff에 .html/.pdf 등 화면
+  산출물이 추가되면 FINDINGS [WARNING](FAIL 사유 아님). 이 값이 브리핑에
+  실려야 하므로 execute-plan stage-reviewer 브리핑 ②에 `ui:` 라인 1줄
+  추가(계약 필드 생산·소비 동시 수정 규칙). audit C에 ui: 계약 일치 검사
+  1항목. 이 외 수정 없음.
+
 ## v1.14.1 — 2026-09-12
 화면 설계 휴리스틱 5종 추가 — 닐슨 10원칙을 화면 설계용으로 줄인 것
 (현재 위치·실행 취소·일관성·에러 문구·기억·입력 부담). 각 질문은

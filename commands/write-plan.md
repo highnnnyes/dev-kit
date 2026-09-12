@@ -9,7 +9,8 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 ## 분해 원칙
 1. 먼저 관련 코드를 실제로 읽어라. 코드를 안 본 계획은 금지 (파일 경로·기존 패턴 확인).
    `docs/screens.md`가 있으면 입력으로 함께 읽는다 (brainstorming이 확정한
-   화면 스펙 — UI 태스크의 verify 기준이 된다).
+   화면 스펙 — UI 태스크의 verify 기준이 된다). DESIGN.md의 화면 설계 대상
+   판정(ui: interactive|static|none)도 읽어 아래 "ui 필드"로 옮긴다.
 2. **단계(stage)**: 독립적으로 검증 가능한 기능 단위. 각 단계는 완료 조건을 가진다.
 3. **태스크(task)**: 한 단계를 **verify 하나로 통과/실패가 갈리는 단위 —
    신규/확장 테스트 1~2개 + 그 구현**으로 쪼갠 것 (대략 5~10분).
@@ -43,7 +44,9 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
      목록 추가는 헌법 개정으로만 가능하다.)
      **[엄격] role=frontend 태스크의 verify에는 대상 화면을
      `docs/screens.md#화면명 기준` 형태로 명시한다** (v1.13.1의 [P] verify
-     경로 명시와 같은 패턴 — 누락이 grep으로 드러난다). `docs/screens.md`가
+     경로 명시와 같은 패턴 — 누락이 grep으로 드러난다). `ui: static`이면
+     페이지/섹션을 생성하는 태스크에 role과 무관하게 같은 규칙을 적용한다
+     (`docs/screens.md#섹션명 기준`). `docs/screens.md`가
      없는 UI 태스크는 태스크로 만들지 말고 DECISIONS로 올려 계획 실행 전에
      멈춰라 — 화면 스펙 없는 UI 구현은 builder 즉흥이 된다.
    - **role 태그**: 이 태스크에 맞는 전문 역할 하나 — 예: `frontend`, `backend`,
@@ -141,6 +144,23 @@ role이 2종 이상인 계획은 **Stage 0을 계약 스테이지로 강제한�
   훅에서도 deny된다 — 스코프 밖 수정 = Surgical Changes 위반).
 - mode S(아래) 계획은 계약 스테이지를 생략한다.
 
+## ui 필드 [엄격] — 화면 설계를 건너뛰었는지 grep으로 드러나게
+PLAN.md 헤더에 `ui: interactive | static | none`을 1줄로 기록한다. 값은
+DESIGN.md의 화면 설계 대상 판정(brainstorming — "사람이 보는 화면 산출물이
+있으면 대상": interactive=조작하는 화면, static=리포트·대시보드 스냅샷·
+이메일·PDF 등 조작 없는 산출물, none=CLI·라이브러리·배치)에서 가져온다.
+- DESIGN.md가 없거나 판정이 기록돼 있지 않으면 같은 기준으로 판정하되,
+  애매하면 **사용자에게 묻는다** — 모델이 none으로 좁히지 않는다 [엄격]
+  ("웹 UI 없음 = 화면 없음"으로 HTML 리포트 프로젝트가 screens.md 없이
+  진행된 실측 오판이 근거).
+- interactive·static이면 `docs/screens.md` 존재가 전제다 — 없으면 태스크를
+  만들지 말고 DECISIONS로 올려 멈춘다 (위 3의 기존 규칙과 동일).
+- none이면 근거 1줄을 병기한다: `ui: none (근거: CLI 도구 — 화면 산출물 없음)`.
+- 근거: 이 필드가 있어야 "화면 설계를 건너뛰었다"가 헤더 빈칸·none으로
+  관측된다 (v1.13.1 [P] verify 경로 명시와 같은 산출물 강제 패턴).
+  stage-reviewer는 `ui: none`인데 통합 diff에 .html/.pdf 등 화면 산출물이
+  추가되면 WARNING을 낸다.
+
 ## 실행 모드 판정 (mode: S|A|B) — 계획 생성 직후
 판정 결과를 PLAN.md 헤더에 1줄로 기록한다:
 `mode: S|A|B (근거: 태스크 수, role 종수, 파일 겹침)`
@@ -213,6 +233,7 @@ role이 2종 이상인 계획은 **Stage 0을 계약 스테이지로 강제한�
 # PLAN: [기능/프로젝트명]
 작성: [날짜] · 상태: IN PROGRESS
 mode: A (근거: 태스크 11개, role 3종, 파일 겹침 없음)
+ui: interactive (docs/screens.md)
 
 ## DECISIONS (사용자 결정 필요 — 비어있으면 생략)
 - [ ] D1: [결정 사항 + 선택지 + 트레이드오프]

@@ -339,7 +339,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
    - **입력 제한 [엄격]**: 브리핑에 담아 전달하는 것이 입력의 전부다 —
      ① stage 시작 커밋 sha(PROGRESS.md의 `Stage N 시작 — base=` 라인에서
      읽어 명시 — 통합 diff `<sha>..HEAD`의 기준점), ② PLAN.md에서 발췌한
-     해당 stage 완료 조건, ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
+     해당 stage 완료 조건 + 헤더 `ui:` 라인 1줄(stage-reviewer의 화면
+     산출물 검사 기준), ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
      ④ 누적 NON-BLOCKING 목록. **PLAN.md·PROGRESS.md 전체 파일 주입 금지** —
      stage-reviewer가 두 파일을 직접 읽게 하지도 않는다.
    - **모델 선택**: 기본은 Task 호출 시 `model: opus`를 **명시**한다

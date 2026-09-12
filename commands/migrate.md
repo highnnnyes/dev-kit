@@ -19,6 +19,17 @@ write-plan의 승인 절차("B로 올려" → 분할안 출력 → 승인 기록
 이미 `mode:` 라인이 있으면 이 단계는 건너뛴다 (재판정은 migrate의 일이
 아니다 — write-plan의 mode 재판정 트리거 참조).
 
+### ui 필드 — 기본값 추정 금지 [엄격]
+PLAN.md 헤더에 `ui:` 라인이 없으면 **사용자에게 값을 객관식으로 확인한
+뒤** 추가한다: `ui: interactive | static | none` (write-plan "ui 필드"
+기준 — interactive=조작하는 화면, static=리포트·대시보드 스냅샷·이메일·
+PDF 등 조작 없는 산출물, none=CLI·라이브러리·배치). none이면 사용자가
+말한 근거 1줄을 병기한다. "판정과 기입은 자동" 원칙의 유일한 예외다 —
+화면 산출물 유무는 코드에서 확정 판정이 안 되고, 모델의 none 오판이
+실측 사례라서 추정하지 않는다. interactive·static인데 `docs/screens.md`가
+없으면 수정하지 않고 4의 보고 대상에 "screens.md 부재 — brainstorming
+화면 설계 필요"로 올린다. 이미 `ui:` 라인이 있으면 그대로 둔다.
+
 ## 2. 프로비저닝
 
 1의 판정 결과(또는 기존 헤더의 mode)에 따라 write-plan의 프로비저닝 규칙과
@@ -52,6 +63,8 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
   verify (write-plan 계약 스테이지의 cross-role verify 의존 금지 위반 —
   [P] 불성립·순차 강등의 1순위 원인). 보고에 분리안("mock 대상 verify +
   통합 stage 태스크")을 함께 제시한다.
+- `ui: interactive|static`인데 `docs/screens.md`가 없는 계획 (1의 ui 필드
+  확인에서 발견 — 화면 설계를 건너뛴 상태)
 
 해당 태스크 줄 끝에 `· hold: migrate(위험 보고 — 사용자 결정 대기)` 표시를
 붙인다 — execute-plan은 이 표시가 있는 태스크를 건너뛰고 보고에 포함한다.

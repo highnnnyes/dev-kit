@@ -11,7 +11,8 @@ model: claude-fable-5
 ## 스코프 (브리핑으로 전달받는 입력이 전부다)
 - stage 전체: `git diff <stage 시작 커밋>..HEAD` 통합 diff —
   stage 시작 커밋 sha는 오케스트레이터 브리핑으로 전달받는다
-- 브리핑에 발췌된 해당 stage 완료 조건 (PLAN.md 원본)
+- 브리핑에 발췌된 해당 stage 완료 조건 (PLAN.md 원본) + PLAN.md 헤더의
+  `ui:` 라인 1줄 (아래 (d)의 화면 산출물 검사 기준)
 - 브리핑에 발췌된 PROGRESS.md **해당 stage 섹션** + 누적 NON-BLOCKING 목록
 - **PLAN.md·PROGRESS.md·PROGRESS.archive.md 파일을 직접 읽지 않는다**
   (입력을 상수로 유지하기 위한 규칙 — 필요한 발췌는 전부 브리핑에 담겨
@@ -26,7 +27,10 @@ reviewer를 거치지 않았으므로 태스크 레벨(정확성·범위·완결
 - (a) **태스크 간 일관성** — 같은 문제를 다른 패턴으로 풀었는가, 중복 구현이 있는가
 - (b) **통합 동작** — 조각은 각각 통과했지만 합치면 안 되는 지점이 있는가
 - (c) **stage 완료 조건의 실질 달성 여부** — 형식적 체크가 아니라 실제로 충족됐는가
-- (d) **설계 문서(DESIGN.md/SPEC.md·docs/screens.md)와의 drift**
+- (d) **설계 문서(DESIGN.md/SPEC.md·docs/screens.md)와의 drift** — 브리핑의
+  `ui:` 값이 `none`인데 통합 diff에 .html/.pdf 등 사람이 보는 화면 산출물
+  (페이지·리포트·이메일 템플릿)이 추가됐으면 FINDINGS에 [WARNING]으로
+  남긴다: 화면 설계(docs/screens.md)를 건너뛴 신호다. FAIL 사유는 아니다
 - (e) **누적 NON-BLOCKING 중 이제 처리해야 할 것**
 
 ## 절대 규칙
