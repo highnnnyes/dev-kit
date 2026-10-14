@@ -76,6 +76,13 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
 - 실샘플 픽스처 (v1.15): write-plan 외부 데이터 파싱 규칙(첫 stage 실응답
   샘플 확보 태스크·`tests/fixtures/real/`·수집 명령 사용자 확인) ↔ reviewer
   "실샘플 픽스처 대상 테스트 존재" 행 — 경로 이름이 일치하는가
+- PLAN 완료 블록 (v1.15.2): execute-plan "PLAN 완료 블록"(`## … PLAN 완료 —` +
+  `- 상류개입:` — `- 정정:`은 쓰지 않음, 자리표시 금지) ↔ write-plan "하류 정정
+  기록"(직전 PLAN 완료 블록에 `- 정정: N (ID)` 덧붙임, 항목 줄 `(정정)` 표시,
+  애매하면 사용자 확인) ↔ metrics "상류 개입 / 하류 정정" 행 ↔ dev-kit 리포
+  docs/v1.15-design.md §5 ④-a/④-b 정의 — 줄 이름과 정의가 일치하는가. 롤링 요약이
+  이 블록을 압축하지 않는가, 메인 세션만 쓰는가(mode B 트랙 금지), 상류개입 b(`→
+  R3-예N` 표시)·c((j) 답) 배타 규칙과 정정의 D-ID 기록이 양쪽에 있는가
 - 결정 저널 (v1.15): docs 스킬 "결정 저널" 형식·출처 태그 3종(+백필 전용
   `[출처 미확인]`)·ADR `출처:` 칸 ↔ execute-plan "결정 저널 게이트"(기록
   후에만 진행·서브에이전트 금지) ↔ write-plan 작성 후 ↔ brainstorming
@@ -112,7 +119,8 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   시점 해석이 metrics.md 파싱 규칙과 일치하는가, [P] 태스크(메인 트리 기록)·
   mode B 트랙 태스크(`PROGRESS.<트랙>.md` — 파일명 분리로 머지 시 원문 보존)
   의 타임스탬프가 통합 시 보존되는가. **계측용** 새 기록 의무는 `- 시작:`
-  1줄까지만 — metrics를 위해 그 이상을 루프에 추가하면 안 된다 (`- 대상:`은
+  1줄(태스크당)과 PLAN 완료 블록(PLAN당 1개, v1.15.2)까지만 — metrics를 위해
+  그 이상을 루프에 추가하면 안 된다 (`- 대상:`은
   중단 조건 (j)의 계수 키로 도입된 것이라 이 제한의 대상이 아니다 — metrics는
   부산물로 읽기만 하는지 확인)
 - mode B 런처: 발사 명령(`claude -p "/dev-kit:execute-plan track <이름>"`)
