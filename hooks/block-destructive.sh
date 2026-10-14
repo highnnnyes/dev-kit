@@ -15,7 +15,7 @@
 #     근거: 병렬 태스크의 미커밋 산출물을 git checkout <경로>로 파괴한 실사고 (2026-08).
 #     오탐 방지: git checkout -b(브랜치 생성)·git checkout <브랜치>(전환)는 허용 —
 #     경로 인자가 있는 형태만 차단한다 (워크트리 격리가 브랜치 조작에 의존한다).
-#   [데이터 파괴] DROP SCHEMA/DATABASE/TABLE·TRUNCATE·rm -rf 등 데이터·환경을 지우는 명령.
+#   [데이터 파괴] DROP SCHEMA/DATABASE/TABLE·TRUNCATE·flyway clean·rm -rf 등 데이터·환경을 지우는 명령.
 #   [스코프 밖 쓰기] Edit/Write의 file_path가 프로젝트 루트 .dev-kit-scope 목록에
 #     없으면 deny. 파일이 없으면 검사를 건너뛴다 (단독 작업·수동 세션 대응).
 #     한계: 동시 디스패치된 태스크 **간** 교차는 못 막는다(둘 다 목록에 있으므로) —
@@ -139,6 +139,9 @@ if [ -z "$MATCHED" ]; then
     m "truncate"
   elif printf '%s' "$NORM" | grep -Eq 'delete +from .* where +1 *= *1'; then
     m "delete from where 1=1"
+  elif printf '%s' "$NORM" | grep -Eq '(^|[^a-z])flyway( +[^ ]+)* +clean( |$)|(^|[^a-z])flywayclean( |$)'; then
+    # flyway CLI `flyway clean`·Gradle/Maven `flywayClean` — 스키마의 모든 객체를 지운다.
+    m "flyway clean"
   elif printf '%s' "$NORM" | grep -Eq '(docker +compose|docker-compose)( +[a-z-]+)* +down' \
      && printf '%s' "$NORM" | grep -Eq '(^| )(-v|--volumes)( |$)'; then
     m "docker compose down -v"
@@ -210,7 +213,7 @@ fi
 # "git checkout 사고"). 파이프·연결(| ; &)이 있으면 실행 경로로 흘려보낼 수
 # 있으므로 제외하지 않는다.
 case "$MATCHED" in
-  "drop schema"|"drop database"|"drop table"|"truncate"|"delete from where 1=1"|\
+  "drop schema"|"drop database"|"drop table"|"truncate"|"delete from where 1=1"|"flyway clean"|\
   "git checkout <경로>"|"git restore"|"git clean"|"git stash"|"git rm"|\
   "git branch -D"|"git reflog expire")
     if ! printf '%s' "$NORM" | grep -Eq '[|;&]'; then

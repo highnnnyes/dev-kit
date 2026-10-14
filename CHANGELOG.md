@@ -3,6 +3,34 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.15.1 — 2026-10-14
+헌법 §5 가드레일 보강 — 로컬 클론에만 남아 있던 수정(2026-08-11 esi-flow 개발 DB
+전소 사고 직후 작성)을 v1.15.0 위로 옮겼다. 이 로컬 분기 때문에 해당 기기의 헌법
+링크가 v1.4.0 → v1.14.2에 머물렀다(진단: esi-flow 2026-10 §7).
+
+- **성질 판단 기준**: 데이터·환경 파괴 판정은 열거가 아니라 "되돌리려면 백업이
+  필요한가?"로 한다. 열거에 flyway clean·pg_restore 추가, 사고 경위(`DROP TABLE`만
+  있고 `DROP SCHEMA`가 없던 목록) 기록.
+- **백업 선확인**: 파괴적 작업 전에 최신 백업이 있는지 먼저 확인한다.
+- **되돌릴 수 없는 것은 deny**: 권한 설정에서 ask가 아니라 deny로 막는다.
+  - 원래 근거("ask는 서브에이전트에서 프롬프트 없이 자동 승인된다")는 공식 문서와
+    반대라 **철회**했다. 명시적 ask 규칙은 auto·bypass 모드에서도 프롬프트하고,
+    서브에이전트 프롬프트는 메인 세션으로 올라온다.
+  - deny 원칙은 PermissionRequest 훅·mod가 ask를 대행 승인할 수 있어 유지한다.
+  - 근거: [permission-modes](https://code.claude.com/docs/en/permission-modes) ·
+    [sub-agents](https://code.claude.com/docs/en/sub-agents)
+- **훅 `flyway clean` 차단 추가**: `hooks/block-destructive.sh`에 패턴을 더해
+  헌법 열거(데이터·환경 파괴)와 훅 차단 목록을 일치시켰다(README 훅 행 동기화).
+- v1.15.0의 §5 내용(두 범주·되돌리기 전면 금지·초기화 원칙·역할 분담·훅·
+  DESTRUCTIVE 행·환경 권한)은 그대로 유지.
+
+**다음 후보 (v1.15.2, 미구현)**
+- 훅 오탐 해소 — `block-destructive.sh`가 명령이 아닌 텍스트(셸 히어독 본문,
+  grep 패턴 문자열)의 "DROP SCHEMA"·"pg_restore"에도 반응해 정상 편집·조사를
+  막는다(esi-flow 2026-10-14 실측). esi-flow 프로젝트 훅(`.claude/hooks/
+  guard-bash.py`)처럼 **세그먼트 선두 명령(docker/psql/pg_restore/dropdb 등)에
+  앵커링해 매칭**하는 방식으로 전환한다.
+
 ## v1.15.0 — 2026-10-14
 수정 루프 차단. 13개 실프로젝트 실측 진단(`docs/diagnosis-2026-10.md` — 프로젝트별
 실행 버전 구간 E0~E6 대응, 현행 버전(E6)에서 재현된 증상만 처방 근거)에서

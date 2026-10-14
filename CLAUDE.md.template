@@ -259,15 +259,16 @@
     관측 수단이고 리뷰어가 감사한다.
   - 훅·지시문 위에 **환경 권한**(harden 스킬 L1)이 최종 보증이다.
 - **파괴적 작업 전에 최신 백업이 있는지 먼저 확인한다.** 백업 없이 파괴하지 않는다.
-- **되돌릴 수 없는 것은 권한 설정에서 ask가 아니라 deny로 막는다.** ask는
-  사람이 승인하면 실행되고, 훅·mod(PermissionRequest)가 대신 응답할 수도 있다.
-  반면 deny는 모든 모드(`bypassPermissions` 포함)와 서브에이전트에 적용된다
-  ([permission-modes](https://code.claude.com/docs/en/permission-modes) ·
-  [sub-agents](https://code.claude.com/docs/en/sub-agents)). 도구가 안 막았다는
-  사실이 안전하다는 뜻은 아니다. ("ask가 서브에이전트에서 프롬프트 없이 승인될 수
-  있다"는 이전 문구는 **미확인 — 안전 측 선택**: 현행 공식 문서는 명시적 ask 규칙이
-  auto·bypass 모드에서도 프롬프트하고, 서브에이전트의 프롬프트는 메인 세션으로
-  올라온다고 적는다.)
+- **되돌릴 수 없는 것은 권한 설정에서 ask가 아니라 deny로 막는다.** deny는
+  모든 모드(`bypassPermissions` 포함)와 서브에이전트에 적용된다. 도구가 안
+  막았다는 사실이 안전하다는 뜻은 아니다.
+  - 원래 근거("ask는 서브에이전트에서 프롬프트 없이 자동 승인된다")는 공식
+    문서와 반대라 **철회**한다. 명시적 ask 규칙은 auto·bypass 모드에서도
+    프롬프트하고, 서브에이전트의 프롬프트는 메인 세션으로 올라온다.
+  - deny 원칙은 **PermissionRequest 훅·mod가 ask 프롬프트를 대행 승인할 수
+    있어** 유지한다.
+  - 근거: [permission-modes](https://code.claude.com/docs/en/permission-modes) ·
+    [sub-agents](https://code.claude.com/docs/en/sub-agents)
 - 디버깅 중에는 조사 대상 모듈 밖의 파일을 수정하지 않는다.
 - 버그 수정의 Iron Law: **조사 없이 수정 없다.** 실행 절차(재현→격리→역추적→
   수정+다층 방어, 3회 실패 시 중단·보고)는 debugging 스킬이 규정한다.
