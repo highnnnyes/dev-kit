@@ -94,7 +94,13 @@
 2. **요구사항 자체가 모호한 새 프로젝트/기능이면** (설계 문서 없음,
    "뭘 만들지"부터 정해야 하는 아이디어 수준)
    → brainstorming 스킬로 설계를 확정해 DESIGN.md를 만든 후 3번으로 이어간다.
-   UI가 있는 설계는 docs/screens.md(화면 스펙) 확정 후 write-plan으로 넘어간다.
+   업무 규칙(계산·판정·분류·수치 기준)이 있는 설계는 docs/rules.md(규칙마다
+   입력→기대 예시 2개 이상 — 예시 없으면 저장 금지 [엄격])를, 화면 산출물이
+   있는 설계(ui: interactive|static — 웹 UI 유무가 아니라 산출물 기준, HTML
+   리포트 포함)는 docs/screens.md(화면 스펙)와 디자인 확인(docs/design/ —
+   자료가 없으면 "디자인 순서입니다"로 멈춤)을 확정한 후 write-plan으로
+   넘어간다. 질문은 5항목(목적·시나리오·제약·성공 기준·비범위)에서 케이스
+   단위("입력 X면 결과는?")로 내려가고, 질문 커버리지 표를 DESIGN.md에 남긴다.
    대형/고위험 설계(여러 시스템 연동, 마이그레이션, 결제·인증, 되돌리기
    어려운 결정)면 3번 전에 grill 스킬로 심문한다.
 3. **비자명한 새 기능/설계 요청이면** (여러 파일, 새 모듈, 설계 판단 필요)
@@ -167,6 +173,18 @@
   CLAUDE.md 오버라이드 가능. 사용자 오버라이드("B로 올려"/"순차로 해")는
   헤더에 기록. 헤더 없는 기존 PLAN.md는 S로 간주(하위 호환).
   계약 변경은 stop-the-world — DECISIONS급 승격 후 사용자 확인.
+  **프로비저닝 (v1.12)**: mode A 판정 시 write-plan이 worktree 선언·테스트
+  리소스 규칙을 프로젝트 CLAUDE.md에 직접 기입한다(안내 금지, 수정 파일은
+  PLAN.md·프로젝트 CLAUDE.md 2개 한정). 계획 수정 시 mode 재판정(S→A 자동,
+  A→S는 진행 중 [P] 없을 때, B는 항상 승인). 기존 프로젝트는 `/migrate`
+  (멱등 — 판정·기입은 자동, 위험은 보고).
+- **PLAN.md 헤더 스펙 필드 [엄격]**: `ui: interactive|static|none`,
+  `rules: docs/rules.md|none`, `design: docs/design/|skip|n/a` — 건너뛴 상류
+  단계가 헤더 빈칸·none·skip으로 드러난다. none·skip은 근거·사유 병기,
+  모델이 스스로 none·skip으로 좁히지 않는다(애매하면 사용자에게 묻는다).
+  interactive·static은 screens.md, rules 대상은 예시 있는 rules.md가 없으면
+  DECISIONS로 멈춘다. 규칙이 걸린 태스크의 verify는 `docs/rules.md#R3`을
+  명시하고 예시 ID가 테스트 케이스 ID다.
 - 실행은 `/execute-plan`으로: 태스크마다 신선한 `builder` 서브에이전트가 구현하고
   `reviewer`가 검증한다. 메인 에이전트는 오케스트레이터 역할만 하여
   긴 작업에서도 메인 컨텍스트 오염을 방지한다.
@@ -199,7 +217,14 @@
   (f) stage-reviewer 2회 연속 FAIL, (g) `.dev-kit-pause` 파일 존재
   (태스크 경계에서만 정지), (h) 워크트리 그룹 머지 충돌 또는 같은 그룹
   머지 후 통합검증 2회 연속 FAIL, (i) 계약 변경 필요(mode A/B —
-  stop-the-world: DECISIONS급 승격, 전 트랙 태스크 경계 정지 후 사용자 확인).
+  stop-the-world: DECISIONS급 승격, 전 트랙 태스크 경계 정지 후 사용자 확인),
+  (j) 대상 반복 3회 — 같은 규칙·화면(PROGRESS `- 대상:` 키)에 FAIL·보완
+  태스크·사용자 정정이 stage를 넘어 누적 3회면 패치를 멈추고 "스펙 공백
+  질문"(rules.md·screens.md 중 어디가 비었나)을 DECISIONS로 올린다.
+- **[엄격] 결정 저널**: DECISIONS 답변·계획 승인·mode B 승인·사용자 정정·
+  측정에 의한 방향 전환 시 오케스트레이터가 `docs/journal.md`에 항목(출처
+  태그 `[내 판단]`|`[AI 제안→내가 채택]`|`[AI 자율]` 필수 — AI 제안을 내
+  판단으로 쓰지 않는다)을 남긴 **뒤에만** 다음 단계로 간다. 형식은 docs 스킬.
 - 멈출 때는 진행 상황(완료/남은 태스크, 이슈, NON-BLOCKING 누적)을 요약 보고한다.
 - PLAN.md 없이 진행하는 단발 작업은 위의 기본 검증 루프(reviewer만)를 따른다.
 

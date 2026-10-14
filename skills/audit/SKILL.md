@@ -32,7 +32,10 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   (VERIFIED 명령 목록 ↔ PROGRESS.md `- 리뷰명령:` 전재)
 - 리뷰 입력 제한: reviewer 브리핑 4종(태스크 정의·diff·verify 결과 1줄·
   프로젝트 CLAUDE.md) + 조건부 ⑤(verify가 docs/screens.md를 가리키는
-  태스크 한정 해당 화면 섹션 발췌) ↔ reviewer.md 입력 규칙,
+  태스크 한정 해당 화면 섹션 발췌 — `design:`이 docs/design/이면 디자인
+  파일 경로 1줄 포함) + 조건부 ⑥(verify가 docs/rules.md#R을 가리키는
+  태스크 한정 해당 규칙 섹션 발췌) + 재작업 라운드의 직전 BLOCKING 목록·
+  builder CHANGED 원문 ↔ reviewer.md 입력 규칙 ↔ builder.md 입력(규칙 발췌·BLOCKING 목록),
   stage-reviewer 브리핑 발췌 4종 ↔ stage-reviewer.md 스코프 —
   양쪽 목록이 일치하는가
 - 화면 휴리스틱 5종(현재 위치·실행 취소·일관성·에러 문구·기억·입력
@@ -44,12 +47,48 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   ↔ migrate(없으면 사용자 확인 후 추가 — 추정 금지) ↔ execute-plan
   stage-reviewer 브리핑 ②(`ui:` 라인 포함) ↔ stage-reviewer (d)의
   none+.html/.pdf WARNING — 값 이름 3종과 규칙이 일치하는가
+- `rules: docs/rules.md|none` 헤더 (v1.15): brainstorming 업무 규칙 정의
+  (대상 판정·none 자동 좁힘 금지·예시 2개 이상 중 1개 경계·예시 없으면 저장
+  금지) ↔ write-plan "rules·design 필드" + 태스크 verify `docs/rules.md#R3
+  기준`·예시 ID = 테스트 케이스 ID ↔ execute-plan 브리핑 규칙 발췌·리뷰
+  입력 ⑥ ↔ reviewer 예시 1개 = 추적표 1행 ↔ builder `[red]` 예시 도출 ↔
+  builder-light 규칙 발췌 시 `[판단 필요]` BLOCKED ↔ stage-reviewer (d)
+  규칙 drift ↔ docs 스킬 문서 표·drift 스캔 ↔ migrate(사용자 확인·골격만)
+  ↔ grill 케이스 각도 ↔ 헌법 §4 — 이름(`rules:`, `R3-예1`)과 규칙이
+  일치하는가
+- `design: docs/design/|skip|n/a` 헤더 (v1.15): brainstorming 디자인 확인
+  (경로 ① Artifact Design 타입 / ② "디자인 순서입니다" 멈춤·자료 지정,
+  screens.md 화면별 대조, skip은 사용자만) ↔ write-plan 헤더(ui:
+  interactive|static인데 기록 없으면 DECISIONS) ↔ execute-plan ⑤ 디자인
+  경로 ↔ reviewer ⑤ ↔ stage-reviewer 브리핑 ② 3줄 ↔ migrate(사용자 확인,
+  ui: none이면 n/a 자동) ↔ 헌법 §4 — 값 3종이 일치하는가
+- 대상 반복 정지 (v1.15): execute-plan 기록 계약 `- 대상:` 줄(verify 참조의
+  기계적 전사 + `보완=` 값) ↔ 보완 태스크 표시 `· 보완: stage-review|
+  merge-fail|user-fix`(stage-reviewer FAIL·머지 후 통합 실패·사용자 정정
+  3곳에서 생산) ↔ "대상 반복 정지" 사건 정의·누적 3회·스펙 공백 질문 형식·
+  계수 리셋 줄 ↔ 중단 조건 (j) ↔ 헌법 §4 (j) ↔ metrics "재정의 반복" 행 —
+  사건 정의가 세 곳에서 같은가
+- 재작업 BLOCKING ID (v1.15): reviewer BLOCKING 항목 `B1`… 순번 ↔
+  execute-plan 재작업 브리핑(ID 그대로 + 미연결 신규 서술 금지) ↔ builder·
+  builder-light CHANGED `← B1` ↔ reviewer "재작업 라운드" 판정(ID 미연결
+  신규 서술만 BLOCKING — CHANGED `← B#` 줄의 파일:줄 범위 기준) ↔ 리뷰
+  입력의 직전 BLOCKING 목록·builder CHANGED 원문 — 일치하는가
+- 실샘플 픽스처 (v1.15): write-plan 외부 데이터 파싱 규칙(첫 stage 실응답
+  샘플 확보 태스크·`tests/fixtures/real/`·수집 명령 사용자 확인) ↔ reviewer
+  "실샘플 픽스처 대상 테스트 존재" 행 — 경로 이름이 일치하는가
+- 결정 저널 (v1.15): docs 스킬 "결정 저널" 형식·출처 태그 3종(+백필 전용
+  `[출처 미확인]`)·ADR `출처:` 칸 ↔ execute-plan "결정 저널 게이트"(기록
+  후에만 진행·서브에이전트 금지) ↔ write-plan 작성 후 ↔ brainstorming
+  (접근법 선택·rules·screens·design 확정·DESIGN 승인) ↔ grill 산출물 ↔
+  migrate journal 골격·사용자 확인 기록 ↔ `/dev-kit:journal` backfill(추측
+  태그 금지·일괄 확인)·portfolio(`[내 판단]`·`[AI 제안→내가 채택]`만) ↔
+  헌법 §4 — 태그 문자열이 전부 동일한가
 - verify 선행 게이트: execute-plan 게이트(+안전 제약 allowlist·금지 패턴) ↔
   write-plan "부수효과 없는 verify" 규칙 ↔ PROGRESS `FAIL(verify-gate)` 유형
   ↔ 헌법 §4 요약 ↔ README — 5자 일치하는가. 절차형 verify 허용 목록
   (docs "drift 스캔 통과"·harden "증거 칸 충족" 2종 열거)이 execute-plan·
   write-plan 양쪽에서 동일하고 그 외 확장 문구가 없는가
-- `[green]` 리뷰 PASS 후 amend 파일 한정(PLAN.md·PROGRESS.md) —
+- `[green]` 리뷰 PASS 후 amend 파일 한정(PLAN.md·PROGRESS.md·docs/journal.md) —
   execute-plan 기록 규칙에 존재하고, 위반 시 중단·보고가 명시돼 있는가.
   **소유권 스코프 구분**: mode S/A [P] 워크트리 태스크(메인 트리 소유 —
   amend 대상 아님, 머지 후 기록) ↔ mode B 트랙 워크트리(트랙이 트랙 로컬
@@ -72,8 +111,10 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   태스크 시작 시각(`- 시작:` 1줄)이 명시돼 있는가, 블록 헤더 시각 = 종료
   시점 해석이 metrics.md 파싱 규칙과 일치하는가, [P] 태스크(메인 트리 기록)·
   mode B 트랙 태스크(`PROGRESS.<트랙>.md` — 파일명 분리로 머지 시 원문 보존)
-  의 타임스탬프가 통합 시 보존되는가. 새 기록 의무는 `- 시작:` 1줄까지만 —
-  metrics를 위해 그 이상을 루프에 추가하면 안 된다
+  의 타임스탬프가 통합 시 보존되는가. **계측용** 새 기록 의무는 `- 시작:`
+  1줄까지만 — metrics를 위해 그 이상을 루프에 추가하면 안 된다 (`- 대상:`은
+  중단 조건 (j)의 계수 키로 도입된 것이라 이 제한의 대상이 아니다 — metrics는
+  부산물로 읽기만 하는지 확인)
 - mode B 런처: 발사 명령(`claude -p "/dev-kit:execute-plan track <이름>"`)
   ↔ execute-plan 사전 체크의 `track <이름>` $ARGUMENTS 해석,
   `.track-<이름>.status` 형식(3줄 + 결과 라인) 생산 ↔ 메인 세션 취합 소비,

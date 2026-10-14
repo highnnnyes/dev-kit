@@ -15,9 +15,11 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    'fable로 진행해'." 명시적 우회 지시를 받으면 그대로 진행한다.
    태스크 경계에서는 재확인하지 않는다.
 1. PLAN.md의 DECISIONS에 미결 항목이 있으면 실행하지 말고 사용자에게 결정을 요청하라.
-   결정을 받으면 실행 시작 전에 `docs/decisions/NNN-제목.md`에 ADR로 기록하라
-   (맥락/결정/근거/기각한 대안 — 10줄 이내, docs 스킬 형식). 결정의 맥락이
-   채팅에서 증발하는 것을 막는다.
+   결정을 받으면 실행 시작 전에 `docs/decisions/NNN-제목.md`에 ADR로 기록하고
+   (맥락/결정/근거/기각한 대안/출처 태그 — 10줄 이내, docs 스킬 형식),
+   같은 결정을 `docs/journal.md`에 항목으로 남긴다 (아래 "결정 저널 게이트").
+   결정이 업무 규칙이면 `docs/rules.md`에 예시 행으로도 반영한다.
+   결정의 맥락이 채팅에서 증발하는 것을 막는다.
 2. $ARGUMENTS로 특정 stage/task가 지정되면 그것만, 아니면 첫 미완료 태스크부터.
    재개 시 PROGRESS.md 최상단의 `## RESUME` 블록이 있으면 그것부터 읽는다 —
    전체 기록을 훑지 않아도 다음 태스크·미결 사항·남은 워크트리를 알 수 있다.
@@ -52,6 +54,22 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
 마지막으로 미루고, 수정 후에는 stage를 끝내고 새 세션을 권고한다
 (RESUME 블록 갱신 포함 — stage 경계 처리의 세션 재시작 권고와 동일 절차).
 
+## 결정 저널 게이트 [엄격]
+다음 사건이 일어나면 오케스트레이터가 `docs/journal.md`에 항목을 남기고,
+**남긴 뒤에만** 다음 디스패치로 간다 (docs 스킬 "결정 저널" 형식 — 출처 태그
+`[내 판단]`·`[AI 제안→내가 채택]`·`[AI 자율]` 중 하나 필수, 애매하면
+`[AI 제안→내가 채택]`, AI 제안을 `[내 판단]`으로 쓰지 않는다):
+- DECISIONS에 사용자가 답함 (ADR과 링크) · 계획 승인 · mode B 승인
+- 사용자가 정정하거나 방향을 바꿈 (태스크 재정의·규칙 정정·화면 정정 포함)
+- 실험·측정 결과로 방향이 바뀜 (예: 백테스트 결과로 전략 폐기, 실데이터
+  대조로 규칙 수정) — 이 경우 사용자 확인을 받은 결정만 기록 대상이다
+- 아래 "대상 반복 정지"(중단 조건 (j))의 스펙 공백 질문에 사용자가 답함
+확인 방법: 다음 디스패치 직전에 journal.md 마지막 항목이 방금 사건을
+가리키는지 본다. 없으면 먼저 쓴다. journal.md는 CLAUDE.md가 아니므로
+"실행 중 CLAUDE.md 수정 금지"의 대상이 아니며, 서브에이전트에게 쓰게 하지
+않는다 (`.dev-kit-scope`에 넣지 않는다). 기록 커밋은 아래 4의 기록 커밋에
+포함한다 (amend 허용 파일 목록 참조).
+
 ## 태스크 루프
 각 태스크에 대해:
 
@@ -63,10 +81,26 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
    `## [날짜시각] Stage N 시작 — base=<현재 HEAD sha>` 한 줄을 append한다 —
    stage-reviewer의 통합 diff 스코프가 이 sha를 사용한다.
 
+0b. **대상 반복 확인 [엄격]**: 태스크 verify가 `docs/rules.md#`·
+   `docs/screens.md#`를 가리키면 아래 "대상 반복 정지"의 계수를 확인한다.
+   해당 대상 키의 사건이 이미 3회면 디스패치하지 않고 중단 조건 (j)로 간다.
+
 1. **브리핑 작성**: builder가 신선한 컨텍스트에서 시작해도 바로 착수할 수 있게
    자족적인 브리핑을 만든다 — 태스크 목표, 파일 경로, verify 방법,
    이전 태스크의 NOTES에서 넘어온 제약. 프로젝트 전체 맥락을 쏟아붓지 마라.
    그 태스크에 필요한 것만.
+   - **규칙 발췌 [엄격]**: 태스크 verify가 `docs/rules.md#R…`을 가리키면 해당
+     규칙 섹션(원칙 + 예시 표)을 **원문 그대로 발췌**해 브리핑에 넣는다 —
+     `[red]` 브리핑에는 "테스트 케이스는 이 예시 행에서 도출하고 테스트
+     이름·파라미터 ID에 예시 ID를 남겨라"를 명시한다. builder는 rules.md를
+     직접 읽지 않는다 (입력 상수 유지 — 리뷰 입력 ⑥과 같은 발췌).
+   - **브리핑 값의 출처 [엄격]**: 브리핑에 구체 값(키 형식·컬럼명·공식·
+     수치·API 파라미터·경계값)을 넣을 때는 출처를 병기한다 — `파일:줄`,
+     rules.md 예시 ID, 또는 오케스트레이터가 실행한 명령과 출력. 출처를 댈 수
+     없는 값은 넣지 말거나 `미확인 — builder가 코드/데이터에서 확인`으로
+     표시한다. 근거: 진단 S15 — 브리핑의 실측 없는 예시 값·공식 오기가 FAIL
+     원인으로 기록된 건이 myroquant 13·donmac 5·capital-flow 2 (v1.9 브리핑
+     이관 이후에도 지속).
    - 프로젝트에 ARCHITECTURE.md가 있으면 브리핑에 명시한다:
      "구조 파악은 ARCHITECTURE.md 먼저, 코드 탐색은 그다음" — builder의
      탐색 토큰을 절감한다.
@@ -192,16 +226,25 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
 
 3. **reviewer 서브에이전트 호출** (스코프: 이 태스크의 diff만) → VERDICT 수신.
    - **리뷰 입력 제한 [엄격]**: reviewer 브리핑에는 다음 네 가지(+조건부
-     예외 하나)만 담는다 —
+     예외 둘 ⑤⑥ + 재작업 라운드의 직전 BLOCKING 목록·builder CHANGED 원문)만
+     담는다 —
      ① 태스크 정의(PLAN.md의 해당 태스크 줄 원문), ② diff 스코프 지정
      (TDD 2단 태스크는 `git diff HEAD~2 -- <파일들>`, 그 외는
      `git diff -- <파일들>`), ③ 오케스트레이터 verify 결과 1줄
      (`verify: PASS (orchestrator-run)`), ④ 프로젝트 CLAUDE.md(자동 상속 —
-     별도 주입 불필요). 예외 하나: 태스크 verify가 `docs/screens.md`를
-     가리키면 ⑤ **해당 화면 섹션 발췌**를 브리핑에 포함한다 — reviewer의
-     화면 추적표 행(주요 액션·결과 피드백·상태 3종)의 기준이 이 발췌다.
-     reviewer가 screens.md 파일을 직접 읽는 것은 여전히 금지다
+     별도 주입 불필요). 조건부 예외 둘:
+     ⑤ 태스크 verify가 `docs/screens.md`를 가리키면 **해당 화면 섹션 발췌** —
+     reviewer의 화면 추적표 행(주요 액션·결과 피드백·상태 3종)의 기준이 이
+     발췌다. PLAN 헤더 `design:`이 `docs/design/`이면 발췌 끝에 그 화면의
+     디자인 파일 경로 1줄을 덧붙인다 (reviewer가 화면 기준으로 Read한다).
+     ⑥ 태스크 verify가 `docs/rules.md#R…`을 가리키면 **해당 규칙 섹션 발췌**
+     (원칙 + 예시 표) — reviewer의 규칙 예시 행(예시 1개 = 추적표 1행)의
+     기준이 이 발췌다.
+     reviewer가 screens.md·rules.md 파일을 직접 읽는 것은 여전히 금지다
      (stage-reviewer의 발췌 패턴과 동일 — 입력을 상수로 유지).
+     재작업 라운드면 직전 라운드 BLOCKING 목록(ID 포함)과 이번 라운드 builder
+     CHANGED 줄 원문(`← B1` 표기 포함)을 첨부한다 — reviewer "재작업 라운드"
+     판정의 입력이다.
      그 외 PROGRESS.md·설계 문서·이전 태스크 내역 주입은
      금지한다 — 판정에 필요한 최소 입력이 리뷰 토큰과 편향을 동시에 줄인다.
    - **신규 파일 스코프 확보 (호출 직전 [엄격] — 커밋 전 리뷰 흐름 한정)**:
@@ -251,8 +294,15 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      - opus PASS → 통과 (sonnet 오판 — 아래 승격리뷰 기록).
      - opus FAIL → 최종 FAIL. 재브리핑에는 opus의 BLOCKING을 사용한다.
      sonnet PASS는 승격 없이 그대로 최종 PASS다.
-   - FAIL(최종 verdict 기준) → BLOCKING 사항을 브리핑에 추가해서 builder
-     재호출. TDD 2단 태스크는 수정분을 CHANGED 한정 `git add` 후 `[green]`
+   - FAIL(최종 verdict 기준) → BLOCKING 사항을 **ID 그대로**(`B1`, `B2`…)
+     브리핑에 추가해서 builder 재호출. 재작업 브리핑에는 다음을 명시한다
+     [엄격]: "각 수정은 대응하는 BLOCKING ID를 CHANGED 줄에 적는다. 어느
+     BLOCKING ID와도 연결되지 않는 새 서술(문장·주석·docstring·문서 문단)을
+     추가하지 않는다." 재리뷰 브리핑에는 직전 라운드의 BLOCKING 목록(ID 포함)을
+     첨부한다 — reviewer가 ID와 연결되지 않은 새 서술을 BLOCKING으로 판정하는
+     기준이다 (reviewer "재작업 라운드" 규칙 — CHANGED 원문도 함께 첨부). 근거: 진단 S11 — 재작업마다
+     설명 문장이 덧붙어 새 사실 오류가 생기며 6회·5회 FAIL, 서술형 규칙은
+     막지 못했고 교체 범위를 고정하자 수렴. TDD 2단 태스크는 수정분을 CHANGED 한정 `git add` 후 `[green]`
      커밋에 amend한다. 수정 후 재검증은 verify 선행 게이트부터 다시 거쳐
      **다시 sonnet 기본 호출부터** 시작한다 —
      사후 승격은 라운드마다 독립이며, 직전 라운드가 opus였다는 이유로 opus를
@@ -279,7 +329,12 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
        (verify 선행 게이트·red 확인에서 걸린 실패는 유형 `verify-gate` —
        BLOCKING 요약 자리에 실패한 verify 명령과 결과 한 줄)
      - 넘김: [builder NOTES / reviewer NON-BLOCKING]
+     - 대상: [R3, screens#결과화면] [· 보완=stage-review|merge-fail|user-fix]
      ```
+     `- 대상:` 줄은 태스크 verify의 `docs/rules.md#R…`·`docs/screens.md#…`
+     참조를 **기계적으로** 옮긴다 (판단 없음 — 참조가 없으면 줄 생략).
+     태스크 줄에 `보완:` 표시가 있으면(아래 "대상 반복 정지") 그 값을 병기한다.
+     이 줄이 중단 조건 (j)의 계수 키다.
      FAIL이 한 번이라도 있었던 태스크는 `- FAIL사유:` 줄을 반드시 포함한다
      (1회 통과면 생략). builder=에는 실제 투입된 에이전트의 모델을 적는다
      (light→builder 승급 시 최종 통과시킨 쪽). reviewer=에는 사후 승격 발생 시
@@ -297,8 +352,9 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      만들지 않는다** — PLAN.md 체크·PROGRESS.md 갱신을 `[green]` 커밋에
      amend로 흡수한다 (메시지 본문에 오케스트레이터 verify 게이트 결과 추가.
      push 전 로컬 커밋이므로 amend는 안전하다).
-     **[엄격] 이 리뷰 PASS 후 amend로 수정 가능한 파일은 PLAN.md·PROGRESS.md
-     둘로 한정한다.** amend 직전 스테이징 diff(`git diff --cached --name-only`)
+     **[엄격] 이 리뷰 PASS 후 amend로 수정 가능한 파일은 PLAN.md·PROGRESS.md·
+     docs/journal.md 셋으로 한정한다** (journal은 결정 저널 게이트의 기록 —
+     판정 대상 밖 기록 파일이다). amend 직전 스테이징 diff(`git diff --cached --name-only`)
      에 그 외 파일이 포함되면 amend를 실행하지 말고 루프를 중단해 사용자에게
      보고한다 — 리뷰어가 판정한 diff와 최종 커밋의 동일성 보장이 근거다
      (기록 파일만이 판정 대상 밖이다). 리뷰 FAIL 후 수정분 amend(3의 재작업
@@ -330,8 +386,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
         멈추지 않는다). 실행한 verify 명령과 결과를 PROGRESS.md에 전재한다
         (v1.7 명령 기록 원칙).
       - 하나라도 실패 → **통합 실패**: 워크트리는 제거하지 않는다(원인
-        추적용 — 경로를 보고에 포함). 보완 태스크를 PLAN.md에 추가하고 정상
-        루프(builder→reviewer)로 처리한다. PROGRESS.md에 기록:
+        추적용 — 경로를 보고에 포함). 보완 태스크를 PLAN.md에 추가하고(줄 끝에
+        `· 보완: merge-fail`) 정상 루프(builder→reviewer)로 처리한다. PROGRESS.md에 기록:
         `## [시각] Group <id> 머지 후 통합검증 — FAIL · 실패한 verify: ...`
         같은 그룹에서 2회 연속 실패하면 루프를 멈추고 사용자에게 보고한다.
    **stage 경계 처리**: 한 stage의 모든 태스크가 완료되면 **stage-reviewer**
@@ -339,8 +395,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
    - **입력 제한 [엄격]**: 브리핑에 담아 전달하는 것이 입력의 전부다 —
      ① stage 시작 커밋 sha(PROGRESS.md의 `Stage N 시작 — base=` 라인에서
      읽어 명시 — 통합 diff `<sha>..HEAD`의 기준점), ② PLAN.md에서 발췌한
-     해당 stage 완료 조건 + 헤더 `ui:` 라인 1줄(stage-reviewer의 화면
-     산출물 검사 기준), ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
+     해당 stage 완료 조건 + 헤더 `ui:`·`rules:`·`design:` 라인 3줄
+     (stage-reviewer (d)의 화면·규칙 검사 기준), ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
      ④ 누적 NON-BLOCKING 목록. **PLAN.md·PROGRESS.md 전체 파일 주입 금지** —
      stage-reviewer가 두 파일을 직접 읽게 하지도 않는다.
    - **모델 선택**: 기본은 Task 호출 시 `model: opus`를 **명시**한다
@@ -350,7 +406,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
        되돌리기 어려운 변경을 포함
      - PLAN.md의 DECISIONS 항목이 그 stage에서 구현됨
    - PASS → stage 완료 처리 후 다음 stage로 진행.
-   - FAIL → PROPOSED TASKS를 PLAN.md에 보완 태스크로 추가하고 정상 루프
+   - FAIL → PROPOSED TASKS를 PLAN.md에 보완 태스크로 추가하고(태스크 줄 끝에
+     `· 보완: stage-review` — 대상 반복 계수용) 정상 루프
      (builder→reviewer)로 처리한 뒤 stage-reviewer를 1회만 재호출한다.
      두 번째도 FAIL이면 루프를 멈추고 사용자에게 보고한다.
    - 생략: stage 태스크가 2개 이하이거나 문서 전용 stage.
@@ -407,6 +464,36 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
    반환한다(NEXT TASK 없음 — 판정자와 계획자의 관심사 분리). PLAN.md의 다음
    미완료 태스크 정의에 builder NOTES·reviewer NON-BLOCKING 중 이번에 반영할
    것을 얹어 1의 브리핑 절차로 돌아간다.
+
+## 대상 반복 정지 [엄격] — 패치 대신 스펙 공백 질문
+같은 규칙·화면을 stage를 넘나들며 계속 고치는 것은 구현 결함이 아니라
+**스펙 공백**의 신호다. 실측: 진단(dev-kit 리포 docs/diagnosis-2026-10.md "반복 횟수
+분포") — 같은 규칙·화면의 재정의·재작업은 3회째에 몰렸고 현행 버전에서도
+같았다. 기존 3회 FAIL 정지는 태스크 하나 안에서만 세서 이 반복을 못 잡는다.
+
+- **대상 키**: PROGRESS `- 대상:` 줄의 값 (`R3`, `screens#결과화면`).
+- **사건** (키마다, PROGRESS.md + PROGRESS.archive.md 합산 — grep으로 센다):
+  ① 그 키를 가진 태스크 블록 중 `FAIL후PASS` 또는 `[verify 미통과]`
+  `BLOCKED` 1블록 = 1사건 — FAIL사유 유형이 기능 결함·verify 미충족·
+  verify-gate 중 하나 이상일 때만 (컨벤션 위반·보안·기타만이면 제외,
+  `[전제 붕괴]` BLOCKED는 제외 — 중단 조건 (b)가 이미 멈춘다), ② `보완=stage-review` · `보완=merge-fail` 블록 1개 =
+  1사건, ③ 사용자 정정으로 추가된 태스크(`보완=user-fix` — 사용자가 이미
+  확정된 규칙·화면 동작을 정정해 생긴 태스크에 오케스트레이터가 표시)
+  1개 = 1사건.
+- **발동**: 어떤 키의 사건이 **누적 3회**에 이르면, 그 키를 대상으로 하는
+  남은 태스크·보완 태스크의 디스패치를 멈춘다 (다른 키의 태스크는 계속
+  진행 가능 — 의존이 없을 때만). 중단 조건 (j).
+- **스펙 공백 질문**: 패치를 계속하지 않고 PLAN.md DECISIONS에 올린다:
+  `- [ ] D[n]: 스펙 공백 — 대상 [키] · 사건 3회 [각 1줄 요약] · 비어 있는 곳: [rules.md R# 예시 부족 | screens.md 상태·액션 누락 | 규칙 자체 부재] · 추가할 예시/상태 초안: [표]`
+  사용자가 답하면 결정 저널 게이트로 기록하고, **rules.md·screens.md를
+  먼저 갱신한 뒤** 그 새 예시를 테스트 케이스로 하는 태스크로 재개한다.
+  갱신 주체는 오케스트레이터다 — 사용자 답을 그대로 옮기는 것(예시 행·
+  상태 추가, 판단 없음)만 하고, 별도 커밋 `[spec] 대상 [키] 스펙 갱신`으로
+  남긴다. 이 커밋의 파일은 `docs/rules.md`·`docs/screens.md`·
+  `docs/journal.md`·PLAN.md로 한정한다 [엄격] (`[green]` amend가 아니다 —
+  코드 diff와 섞지 않는다).
+  재개 후 같은 키의 사건 계수는 0부터 다시 센다 (재개 시점의 PROGRESS에
+  `## [시각] 대상 [키] 스펙 갱신 — 계수 리셋` 1줄).
 
 ## mode B 런처 — headless 트랙 병렬 [엄격]
 PLAN.md 헤더가 `mode: B`이고 **사용자 승인이 기록된 경우에만** 진입한다.
@@ -491,6 +578,9 @@ A→S 하향은 진행 중 [P] 태스크가 없을 때만 즉시(있으면 현�
 전환), B 상향은 재판정에서도 승인 게이트 유지. 재판정의 프로비저닝이
 프로젝트 CLAUDE.md를 수정하게 되면 위 "실행 중 CLAUDE.md 수정 금지"
 절차에 따라 기입 후 새 세션 재개를 권고한다.
+/ (j) **대상 반복 3회** — 같은 규칙·화면 키의 사건이 누적 3회 (위 "대상
+반복 정지" — 스펙 공백 질문을 DECISIONS로 올리고 멈춘다. 다른 키의 독립
+태스크는 계속할 수 있다).
 
 중단·완료 시 보고: 완료 태스크 수, 남은 태스크, 발생 이슈, 리뷰어 NON-BLOCKING
 누적 목록, 남아 있는 워크트리 경로(BLOCKED·통합 실패분). 보고 전에 PROGRESS.md의

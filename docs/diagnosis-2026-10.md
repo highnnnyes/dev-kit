@@ -1,0 +1,363 @@
+# 수정 루프 진단 — 2026-10 (dev-kit v1.14.2 시점)
+
+> 목적: AI 개발이 "계속 수정의 연속"에 빠지는 원인을 실측으로 찾는다.
+> 이 문서는 Phase 1(진단, 읽기 전용) 산출물이다. 처방은 Phase 2에서 이 문서의 근거 행만 인용해 설계한다.
+
+## 0. 범위와 방법
+
+- **대상**: `~/dev` 아래 PLAN.md 또는 PROGRESS.md가 있는 폴더 13개.
+  dividend-sim, donmac, maro-automation, mastery-labs, myro-ai-company, myro-capital-flow,
+  myro-market-flow, myro-scraper, myrocrypto, myroquant, trend-keyword, triangular-arbitrage, youtube-briefing.
+  - **esi-flow: 없음** (이 맥에 디렉토리가 없다)
+  - 처음 알려진 7개 외에 6개가 추가됐다: donmac, myro-capital-flow, myro-market-flow, myro-scraper, myrocrypto, triangular-arbitrage
+- **도구 버전**: `claude --version` = 2.1.280 (Claude Code). `/design`의 실제 동작 확인은 Phase 2 C에서 한다.
+- **fix 비율**: `git log --no-merges` 커밋 제목 정규식으로 셌다.
+  - 정규식: `fix|green-fix|green2|red2|재작업|핫픽스|버그|정정|오탐|수정` — 단 `수정주가`는 제외
+  - 휴리스틱이다. "정정"에 문서 drift 정정이 섞인다.
+- **핫스팟**: 위 fix 커밋이 건드린 파일을 셌다. PROGRESS/PLAN/RESUME/HANDOFF/CHANGELOG 기록 파일은 제외했다.
+- **FAIL 사유 분류**: 건마다 주원인 1개를 수작업으로 골랐다. 판단이 들어간 분류이므로 경계 사례는 재검토 대상이다.
+- **재시도율**: `/metrics` 정의(FAIL 총수 ÷ 태스크 수)를 따랐다.
+  - PROGRESS.md와 archive에 같은 블록이 중복 기재된 프로젝트가 많아 (Task ID, 헤더 시각) 기준으로 중복을 제거했다.
+  - 비표준 헤더는 집계에서 뺐다. 그래서 값은 **하한**이다 (myroquant는 130개 제외).
+- 측정할 수 없는 값은 `n/a (사유)`로 적었다. 추정으로 메운 값은 없다.
+- 근거 표기: `프로젝트/파일:줄` 또는 `프로젝트@커밋해시`. archive는 `PROGRESS.archive.md`의 약칭이다.
+
+### 0-1. dev-kit 버전 대응 방법
+
+진단한 결함이 **현행 버전(v1.14.2)에도 해당하는지, 이미 고쳐진 구버전의 결함인지**를 가르기 위해 각 태스크 기록을 당시 버전에 대응시켰다.
+
+- **버전 시점**: dev-kit 리포의 `plugin.json` version 변경 커밋 시각(KST)을 썼다.
+- **설치 기록의 한계**: `~/.claude/plugins/installed_plugins.json`에는 최초 설치(2026-07-14)와 마지막 갱신만 남는다. 마지막 갱신은 2026-09-12 16:50 KST, v1.14.2(`20f793c`)다. 중간 업데이트 시각은 기록이 없다.
+  - 그래서 "릴리스 시각 = 적용 시각"으로 근사했다. 실제 적용은 `/plugin update`를 실행한 시점까지 **늦어질 수 있다** (이 맥 기준; 다른 기기는 확인 불가).
+  - 헌법(`CLAUDE.md.template`)은 2026-08-01 01:13부터 `~/dev/CLAUDE.md` 심볼릭 링크라 git pull 즉시 반영된다.
+- **명시적 버전 흔적** (프로젝트 커밋):
+  - myrocrypto: `@a32650a` "[dev-kit-migrate] v1.10 재개 준비", `@de21d55` "v1.12 규격 반영" (2026-08-18)
+  - myroquant: `@1e7b085` v1.10, `@884bf37` worktree 선언, `@41f6ab2` v1.12.0 (2026-08-18), `@463cdf6` "dev-kit 1.12.0 스코프 훅 … 이슈 기록" (2026-08-30)
+  - 나머지 11개는 migrate 커밋이나 버전 표기가 없다. 날짜로만 대응했다.
+- **버전 구간**: 릴리스를 기능 묶음 단위 7구간으로 묶었다. 같은 날 여러 릴리스가 몰린 날(08-01, 08-18, 09-12)은 시각까지 보고 나눴다.
+  - 날짜만 있고 시각이 없는 헤더는 그날 12:00으로 두었다. 경계일에 걸리는 소수 블록은 구간이 틀릴 수 있다.
+
+| 구간 | 버전 | 시작 (KST) | 이 진단과 관련된 주요 변경 |
+|---|---|---|---|
+| E0 | v1.0~1.2 | 2026-07-12 23:42 | builder→reviewer 루프, docs 스킬 |
+| E1 | v1.3.x | 2026-08-01 02:10 | **stage-reviewer**, 모델 티어링, `FAIL사유: … 유형(…)` 기록 계약 (v1.3.1) |
+| E2 | v1.4~1.5 | 2026-08-02 17:25 | TDD, debugging 스킬, 병렬 스코프 격리 |
+| E3 | v1.6~1.8 | 2026-08-13 20:03 | **요구사항 추적표**·뮤테이션 검증 규칙 (v1.6), worktree 격리·RESUME 누적 NON-BLOCKING (v1.8.1) |
+| E4 | v1.9~1.12 | 2026-08-18 17:09 | **verify 선행 게이트·red/green 2단**, 브리핑 작성 책임을 오케스트레이터로 이관 (v1.9), **mode S/A/B** (v1.10), **`- 시작:` 기록** (v1.11), /migrate (v1.12) |
+| E5 | v1.13.x | 2026-08-21 21:04 | cross-role verify 의존 금지, Stage 0 대역 |
+| E6 | v1.14.x | 2026-09-12 07:35 | **화면 설계 단계 `docs/screens.md`** (v1.14.0), 휴리스틱 5종 (v1.14.1), **`ui:` 헤더** (v1.14.2) |
+
+---
+
+## 1. 프로젝트별 요약 표
+
+### 1-1. 수정 루프 지표 (항목 2·4)
+
+| 프로젝트 | 커밋 | fix 비율 | fix 핫스팟 ≥5회 | 반복 수정 흔적 (대표) | `[P]` 태그 / 실제 병렬 |
+|---|---|---|---|---|---|
+| myroquant | 1533 | 166 (10.8%) | README.md 19 · data/collect.py 17 · tests/test_streamlit_app.py 11 · app/views/00_backtest_screener.py 9 · tests/test_collect.py 6 · 프로젝트문서_v8.md 5 | 백테스트 화면 15+ stage 재작업 (ui→ux1~5→ua→ua13…), 통합검증 FINDINGS가 새 stage를 연쇄로 만듦 (xcmp→xcmpf→xfold→xg→xwk) | 68 / 있음 — wt/kw4.2·kw4.3 브랜치 머지, 시간 겹침 52건, 실효 1.25× |
+| myrocrypto | 452 | 19 (4.2%) | 없음 | 엔진 체결·청산 규칙을 Stage 4→5→21→23에서 수정 (ADR 015 4회 개정), 대시보드 7개 stage | 11 / 일부 — worktree 머지 5건, 실효 1.02~1.07× |
+| donmac | 356 | 21 (5.9%) | 없음 | 점유율 분모를 4일 동안 3번 재정의 (커밋 6개), 문서 drift 정정 커밋 6개 | 0 (이력 1) / 없음 |
+| myro-capital-flow | 186 | 8 (4.3%) | 없음 | "조회창 < 필요 이력" 결함이 3번 재발 (D5→D10→3.4), 내부 코드명 노출 수정 3회 | 19 / **있음** — 머지 16건, [P] 그룹 내부 2.0~2.6× |
+| myro-ai-company | 175 | 26 (14.9%) | lib/orchestrator.ts 11 · test/integration/orchestrator.test.ts 6 | 시스템 프롬프트 규칙 덧붙이기 11회 (**10회는 dev-kit 도입 이전**, 06-02~07-12), max_tokens 사슬 6일 (07-12~07-18) | 13 / 판별 불가 (묶음 커밋) |
+| youtube-briefing | 214 | 12 (5.6%) | 없음 | 라벨 프롬프트가 양 끝을 오감 (watch 96%→0%→25%), CI "수정:" 커밋 하루 5건 | 14 / 없음 (묶음 커밋) |
+| dividend-sim | 177 | 13 (7.3%) | 없음 (전체 기준 index.astro 30·simulator.css 27, 기능 누적) | 푸터 3회 재설계, x축 라벨 4단 사슬 | PLAN 2종에 3+5 / n/a |
+| myro-market-flow | 150 | 19 (12.7%) | tests/test_analyzer.py 5 | report.py 30회 — Stage 19~24는 사용자가 출력물을 보고 표 사양을 하나씩 정정 | 0 / — |
+| mastery-labs | 108 | 6 (5.6%) | 없음 | 헤딩 트리 3겹 수정 (5.1n→5.1r→5.1s~w) | 3 / 판별 불가 |
+| myro-scraper | 76 | 5 (6.6%) | 없음 | `/user` URL 처리 이월→회귀 1회 | 19 / 3쌍 동시 커밋 |
+| trend-keyword | 53 | 5 (9.4%) | 없음 | tracked 상한 체인 커밋 6개 (NON-BLOCKING 이월 15일 방치) | 11 / 판별 불가 |
+| triangular-arbitrage | 39 | 1 (2.6%) | 없음 | 같은 결함 클래스 재발 3건 | 13 / 없음 (합본 커밋) |
+| maro-automation | 20 | 1 (5.0%) | 없음 | 없음 | 2 / 없음 |
+
+**관찰**: 커밋 제목 기준 fix 비율은 2.6~14.9%로 낮다. 같은 파일을 fix로 5회 이상 고친 곳은 3개 프로젝트뿐이다.
+"수정의 연속"은 fix 커밋으로는 잘 드러나지 않는다. 대신 아래 두 형태로 나타난다.
+- **재시도**: 같은 태스크의 FAIL 반복 (1-2 표의 재시도율)
+- **재정의**: 같은 규칙이나 화면이 새 stage·새 PLAN으로 다시 등장
+
+### 1-2. 루프 실측 (`/metrics` 절차, 항목 4)
+
+| 프로젝트 | 입력 블록 → 고유 태스크 | 재시도율 | 소요 중앙값 (시도 1회 / light / 300m 초과 제외) | 병렬 효율 | 비고 |
+|---|---|---|---|---|---|
+| myroquant | 258+238 → 461 (비표준 130 제외) | **36.4%** · 월별 33.3→37.8→**45.8%** | 25.0m (n=200) / 15.0m (n=33) / 32.0m (n=279) | 1.25× (S·A 혼재, 상한 대비 n/a) | 악화 추세 |
+| myrocrypto | 228+34 → 229 | **38.4%** | 14.0m (n=97) / 8.5m (n=16) / 17.0m (n=131) | 1.02~1.07× (stage별) | `유형(…)` 태그 0건 — FAIL 유형 n/a |
+| donmac | 70+86 → 136 | **39.7%** | 30.0m (n=87) / 25.0m (n=26) / 35.0m (n=112) | n/a (mode S) | |
+| myro-capital-flow | 9+56 → 60 | **51.7%** | 14.0m (n=30) / 1.0m (n=3, 표본 부족) / 18.5m (n=42) | 계획 전체 1.06× (상한 대비 35%) · [P] 그룹 내부 2.0~2.6× | 1.2는 시도 6회 |
+| mastery-labs | M2 구간 → 38 | **73.7%** | n/a (`- 시작:` 0건) | n/a | 구형식 구간 제외 |
+| triangular-arbitrage | → 36 | **41.7%** | n/a (`- 시작:` 0건) | n/a | 요약↔원문 불일치 2건 — 근사치 |
+| myro-scraper | 42 헤더 | 14.3% | n/a (`- 시작:` 0건) | n/a | |
+| myro-ai-company | 41 | 9.8% | n/a (`- 시작:` 0건) | n/a | "직접 처리" 9블록은 리뷰를 거치지 않음 |
+| maro-automation | 11 | 9.1% | n/a (구형식) | n/a | |
+| dividend-sim | 78 (v1.11 형식 17) | 6.4% (v1.11 구간 17.6%) | 9.0m (n=14) / 3.0m (n=2) / 10.5m (n=16) | n/a (mode S) | stage-reviewer FAIL 2회로 보완 태스크 3개 신설 — 재시도율에 안 잡힘 |
+| trend-keyword | 54 | 5.6% | n/a | n/a | Stage 11은 태스크 블록 없음 |
+| myro-market-flow | 6+15 → 21 (Stage 19~23) | **0%** | n/a — `- 시작:`이 시각 대신 자리표시 문구 (`myro-market-flow/PROGRESS.md:17` 등 PROGRESS 6줄·archive 15줄 전부) | n/a | Stage 1~18은 PROGRESS 기록 없음 |
+| youtube-briefing | 37 (Task 26) | **0%** (0/22) | n/a (시각이 대략값) | n/a | PLAN 본편은 Day 명세라 체크박스 없음 |
+
+재시도율의 건강 범위는 10~30%다. 13개 중 범위 안은 1개(myro-scraper)뿐이다.
+- 30% 초과: 6개
+- 10% 미만: 6개 — 리뷰 형식화가 의심되는 구간이거나 루프 밖 작업 비중이 크다
+
+### 1-2b. 프로젝트별 실행 버전과 구간별 재시도율
+
+태스크 블록 헤더 날짜로 구간을 나눴다. (Task ID, 날짜) 기준 중복 제거라 1-2 표와 태스크 수가 조금 다르다. 표기는 `태스크 t / FAIL F / 재시도율`이다.
+
+| 프로젝트 | 태스크 기록 기간 | 실행 구간 | 구간별 재시도율 | 현행(E6) 루프 근거 |
+|---|---|---|---|---|
+| myroquant | 07-17 ~ 10-12 | E0~E6 | E0 57t 3F **5%** · E2 86t 26F 30% · E3 47t 9F 19% · E4 15t 5F 33% · E5 234t 90F 38% · E6 118t 52F **44%** | 있음 — 단 screens.md·`ui:` 미적용 (v1.14 미반영) |
+| myrocrypto | 08-09 ~ 10-12 | E2~E6 | E2 26t 15% · E3 43t **65%** · E5 27t 56% · E6 137t **31%** (E4는 1블록이라 생략) | 있음 — `ui: interactive`, screens.md 사후 작성 (09-26) |
+| donmac | 09-14 ~ 10-12 | **E6만** | E6 138t 54F 39% | 있음 — 처음부터 v1.14 규격 (screens.md 사전 작성) |
+| myro-capital-flow | 09-12 ~ 10-09 | **E6만** | E6 61t 31F 51% | 있음 — screens.md 사전 작성. PLAN 헤더가 v1.14.2 직전(09-12 13:54, `@a221e16`)이라 `ui:` 대신 "화면: 있음" |
+| dividend-sim | 07-15 ~ 09-12 | E0·E2·E5·E6 | E0 46t 2F 4% · E2 8t 0% · E5 3t 0% · E6 10t 2F 20% | 약함 (E6 10블록) |
+| myro-market-flow | 08-23 ~ 08-24 | **E5만** | E5 21t 0F **0%** | 없음 (v1.13 시기) |
+| mastery-labs | 07-27 ~ 08-16 | E0·E2·E3 | E0 17t 24% · E2 30t 24F **80%** · E3 8t 50% | 없음 |
+| myro-scraper | 08-02 ~ 08-08 | E2만 | E2 42t 6F 14% | 없음 |
+| triangular-arbitrage | 08-03 ~ 08-08 | E2만 | E2 27t 14F 52% | 없음 |
+| trend-keyword | 07-31 ~ 08-10 | E0·E2 | E0 15t 0% · E2 8t 0% | 없음 |
+| myro-ai-company | 07-15 ~ 07-19 | E0만 | E0 28t 4F 14% | 없음 |
+| youtube-briefing | 07-19 ~ 07-31 | E0만 | E0 22t 0F **0%** | 없음 |
+| maro-automation | 07-27 ~ 07-29 | E0만 | E0 7t 1F 14% | 없음 |
+
+**읽는 법**
+- **현행 버전 루프를 실제로 돈 프로젝트는 4개뿐**이다: myroquant, myrocrypto, donmac, myro-capital-flow. 그 밖에 dividend-sim이 E6에서 10블록을 돌았다.
+- 나머지 8개는 v1.13 이전에 태스크 기록이 끝났다. 이들의 결함은 **"현행 dev-kit의 결함"이 아니라 "당시 버전의 결함"**이다. 현행에서 고쳐졌는지는 아래 §3의 "현행 상태" 열에서 따로 판정했다.
+- **재시도율은 구간끼리 비교할 수 없다.** E0(v1.0~1.2)의 0~5%는 루프가 잘 돌았다는 뜻이 아니다. stage-reviewer(v1.3), 요구사항 추적표·뮤테이션 검증(v1.6), verify 선행 게이트(v1.9)가 들어오기 전이라 **리뷰가 덜 잡았을 가능성이 크다**. myroquant 5%→30%, mastery-labs 24%→80%의 상승은 리뷰 강화와 시기가 겹친다.
+- E6 안에서만 보면 재시도율은 31~51%로, 현행 버전에서도 건강 범위(10~30%)를 넘는다.
+
+### 1-3. 상류 산출물 (항목 3)
+
+| 프로젝트 | DESIGN.md | docs/screens.md | PLAN 헤더 mode / ui / worktree | 업무규칙·케이스 예시 (입력→기대) |
+|---|---|---|---|---|
+| myroquant | 있음, 267줄 — 범위가 rt/cal/port 한정이라 현재 주력(백테스트·UI) 미포함 (`DESIGN.md:1`) | **없음** | S (`mode:` 줄 10개) / **없음** / CLAUDE.md `isolated-env` | 규칙 문장은 있음 (`DESIGN.md:210`). 예시 **0건** |
+| myrocrypto | 있음, 290줄 | 있음, 246줄 — Stage 18에 **사후** 작성, "코드가 정본" (`docs/screens.md:4`) | S / interactive / CLAUDE.md `isolated-env` | 체결 규칙은 "애매하면 불리한 쪽" 한 줄뿐 (`DESIGN.md:61`). 예시 **0건** |
+| donmac | 있음, 238줄 | 있음, 140줄 — "숫자는 전부 예시" (`docs/screens.md:3`) | S / interactive / 미선언 | 서술형 규칙만 있음. "예:" 1건 (`DESIGN.md:122`) |
+| myro-capital-flow | 있음, 186줄 | 있음, 310줄 (하루 6차 개정) | A / **없음** ("화면: 있음", v1.14.2 미반영) / `isolated-env` | 예시 0건. glossary.md는 용어 사전이고 판정 규칙 문서가 아님 (`docs/glossary.md:3-6`) |
+| dividend-sim | 없음 (PART2_TAX·PART3_UI가 대체) | 없음 — PART3_UI.md를 화면 스펙으로 지정한 시점이 2026-09-12 (`docs/DECISIONS.md:603`) | S (최근 2종만) / 없음 / 없음 | 세금 골든·경계 목록은 있음 (`docs/PART2_TAX.md:280-292`). 화면→엔진 매핑에는 예시 없음 |
+| mastery-labs | 없음 | 없음 — "화면 설계 문서는 없다" (`MVP.md:220`) | 없음 | 레벨 규칙은 추상 1문장. 예시는 ADR 017 이후에야 생김 (`PIPELINE.md:54`) |
+| myro-market-flow | 없음 — 승인 설계 원본 파일 유실 (`PLAN.md:5`) | 없음 | S / 없음 / 없음 | 수치 규칙만 있음. "어떤 종목 → 어느 표" 예시 없음 |
+| youtube-briefing | 없음 | 없음 (출력 포맷 샘플이 대체, `PLAN.md:437-545`) | 없음 | 라벨 기준은 추상 정의 1문장 (`youtube-briefing@2c3a81c:PLAN.md` §9.1) |
+| myro-ai-company | 없음 (ARCHITECTURE 842줄) | 없음 | 없음 | 발화→기대 도구 호출 예시 4줄, 테스트와 연결 없음 (`GOVERNANCE.md:376-379`) |
+| trend-keyword | 있음, 143줄 | 없음 (CLI) | 없음 | 수치 사례 일부 있음 (`PLAN.md:34,45`). 편입·상한 경계 사례는 없음 |
+| myro-scraper | 있음, 131줄 | 없음 (CLI) | 없음 | verify에 입력→기대 사례 있음 (`PLAN.md:16,20`) |
+| triangular-arbitrage | 있음, 263줄 | 없음 | 없음 | **가장 충실함** — "100→110→99 MDD=10%" (`PLAN.md:14`), 펀딩 손계산 (`PLAN.md:21`) |
+| maro-automation | 없음 (SPEC.md 702줄) | 없음 | 없음 | 계약·사례형 verify 있음 (`PLAN.md:17,41`) |
+
+### 1-4. 브레인스토밍 질문 품질 (항목 5)
+
+질문과 답의 원문 기록은 13개 프로젝트 모두 없다. 질문 수 자체는 전부 **n/a**다. 결과물에서 질문의 단위를 추정할 수 있는 곳은 아래와 같다.
+
+| 프로젝트 | 기록 | 질문 단위 | 케이스 단위 질문 |
+|---|---|---|---|
+| myrocrypto | Grilled 7 (`DESIGN.md:229-235`), 2차 초안 §8에 6, D1~D7과 D1~D3 — 약 24개 | 모순·가정·규모(큰 질문), 선택지 수준 | **0** — "같은 봉에 LIMIT과 STOP이 함께 닿으면?"은 23.12 red 중에야 D9로 나옴 (`PLAN.md:1877`) |
+| myroquant | Grilled 1회 (`DESIGN.md:262`), DC-1~12, D-xxx 32개 | 아키텍처 단위 ("가격 축 raw 통일") | 0 — 사례 규칙은 사후에 사용자 정정으로 들어옴 (`PLAN.md:45`) |
+| donmac | 외부 설계 메모에 "미결(사용자 질문)" 1건 | 개념 단위 (신호 종류) | 0 — 임계값은 "리플레이로 확정"으로 미룸 |
+| myro-capital-flow | grill "8건 반영" (`DESIGN.md:185`) | 화면·형식 단위 | 0 |
+| dividend-sim | D1/D2 선택지와 권장안 (`PLAN.md:30-48`) | 중간 단위, 품질 양호 | 0 |
+| myro-ai-company | D1~D3, 선택지 (a)~(c) | 중간 단위 | 0 |
+| 나머지 7개 | 기록 없음 | n/a | n/a |
+
+---
+
+## 2. FAIL / BLOCKED / DECISIONS 사유 분류 (항목 1)
+
+### 2-1. 루프 안에서 발생한 사유 (리뷰 FAIL·BLOCKED·stage 통합검증 FAIL)
+
+| 프로젝트 | 업무규칙·도메인 | 화면·UX | 요구사항 누락 | 테스트·검증 부실 | 회귀 | 컨텍스트 부족 | 환경·인프라 | 기타 | 합계 |
+|---|---|---|---|---|---|---|---|---|---|
+| myroquant | 18 | 1 | 8 | **34** | 8 | 6 | 5 | **54** (문안·문서 사실 오류 31, 로직·컨벤션 23) | 134 |
+| myrocrypto | **18** | 7 | 3 | **18** | 6 | 3 | 2 | 18 (문서·수치 10, 경계·컨벤션 8) | 75 |
+| donmac | **11** | 0 | 4 | 10 | 3 | 4 | 1 | 22 (구현 11, 문서 drift 8, 보안 3) | 55 |
+| myro-capital-flow | 6 | 1 | 3 | **10** | 1 | 1 | 2 | 11 | 35 |
+| mastery-labs | 2 | 0 | 1 | **9** | 2 | 1 | 1 | 7 | 23 |
+| triangular-arbitrage | 2 | 0 | 0 | **8** | 2 | 1 | 1 | 9 | 23 |
+| myro-ai-company | 0 | 1 | 0 | 3 | **5** | **5** | 3 | 1 | 18 |
+| dividend-sim | 1 | 0 | 0 | 3 | **4** | 3 | 0 | 2 | 13 |
+| trend-keyword | 3 | 0 | 3 | 1 | 1 | 1 | **6** | 2 | 17 |
+| myro-scraper | 1 | 0 | 2 | 3 | 1 | 0 | 0 | 2 | 9 |
+| myro-market-flow | — | — | — | 2 | — | 2 | — | 1 | 5 (BLOCKED·재작업, FAIL 0) |
+| youtube-briefing | — | — | — | — | — | 1 | — | 1 (유형 미기재) | 2 |
+| maro-automation | — | — | — | — | — | — | — | 2 (문서 drift) | 2 |
+| **합계** | **62** | **10** | **24** | **101** | **33** | **28** | **21** | **132** | 411 |
+
+### 2-2. 루프 밖에서 발견된 사유 (사용자 정정·실사용·실환경)
+
+리뷰를 통과한 뒤 사람이나 실환경이 찾아낸 것들이다. **"계속 수정"의 체감은 주로 여기서 생긴다.**
+
+| 프로젝트 | 업무규칙·도메인 | 화면·UX | 요구사항 누락 | 기타 | 근거 |
+|---|---|---|---|---|---|
+| myroquant | 가격 축 번복, 대상 규칙 정정, 수치 기준 변경 | 실사용 후 UI 재작업 stage 신설 (ui3·ux1~ux5) | — | — | `PLAN.md:17,45,71,101,515,1137,1285` · archive:75 |
+| myrocrypto | D8~D11 — FAIL 이후 사후 결정 (11개 중 4개) | ADR 009 한국어화, Stage 20 화면 문제 9건 | — | — | `PLAN.md:1321,1694,1876-1879` |
+| dividend-sim | **4** (모두 "근사·규약" 선택) | **5** | 2 | 환경 1 | `PROGRESS.md:336,337,523,613,642-646,745-747,1030,1060,1868` |
+| myro-market-flow | 2 | **3** | 2 | — | `PLAN.md:283,310,323,330→366,365,367` · `@19c2168` |
+| mastery-labs | 3 | 2 | 4 | 환경 4 · 테스트 2 · 회귀 1 · 기타 1 | `PROGRESS.md:452,488,504,533,615-620` · `PLAN.md:68,71,74` |
+| youtube-briefing | 2 (라벨 기준) | 1 | 1 | 환경 3 | `PROGRESS.md:56,168,184,190-194,199,208` |
+| myro-ai-company | — | — | 1 | 실모델·실사용 결함 8 (회귀·컨텍스트 5, 런북 FAIL 3) | `PLAN.md:7` · `@a95c498 @65718ea @db96e28 @0a05153 @1cdb348` |
+| donmac | 원문 스펙 누락분 복구 (Stage 13~16), 사용자 정정 2 | — | — | — | `DESIGN.md:12,165` |
+| myro-capital-flow | 구현 중 계약 변경 DECISIONS 8건 (D3~D10) | 사용자 지적 "기준값을 보고 모르겠다" | — | 테스트 공백 지적 | `PLAN.md:17,28-35` · archive:97 |
+| trend-keyword | — | — | 목적 재확인 1 | — | `PROGRESS.md:227` · `handoff.md:250` |
+
+### 2-3. 대표 원문
+
+**업무규칙·도메인 오해**
+- "`margin_held ≤ 0` 단독 청산 조건이 유리 가격 수익 레그를 오청산(미실현이익 1000 소멸)" — `myrocrypto/PROGRESS.archive.md:6360`
+- "STOP 체결로 레그 0일 때 앞쪽 STOP 생존→새 포지션 오청산 … 3회 연속 FAIL로 정지" — `myrocrypto/PROGRESS.archive.md:6389`
+- "실측 share 1.0→0.122→1.0 플립플롭" — `donmac/PROGRESS.md:460`
+- "상한가면 눌림 조건 무시 — 스펙은 (A 또는 B) AND C" — `donmac/PROGRESS.archive.md:960`
+- "KOFIA D 수치는 D+1 오후 공표 … 623개 테스트가 못 잡음: release_date == date 픽스처만" — `myro-capital-flow/PROGRESS.archive.md:243`
+- "세션 4 '근사 매핑'의 부작용" — `dividend-sim/PROGRESS.md:646`
+
+**테스트·검증 부실**
+- "`and_`→`or_` 뮤테이션이 6 passed로 생존 … 뮤테이션을 실제로 돌린 리뷰어만 잡았다" — `myroquant/PROGRESS.md:627`
+- "승률·PF·샤프 단언이 항상 참 항등식" — `myrocrypto/PROGRESS.archive.md:3552`
+- "요구사항이 아니라 구현 임계값에 맞춘 픽스처" — `mastery-labs/PROGRESS.md:313`
+- "통합 테스트가 헤딩 1개라 CI는 영원히 green이고 프로덕션 첫 책에서 터짐" — `mastery-labs/PROGRESS.md:370`
+- "값 매핑 변이 8종 … 전량 165 passed로 생존" — `myro-capital-flow/PROGRESS.archive.md:91-104`
+
+**회귀**
+- "하나 고치고 하나 부순 상태였다" — `myroquant/PROGRESS.md:1245`
+- "테스트 251 전부 통과했으나 … 코퍼스 측정에서 1317→1031 회귀" — `myroquant/PROGRESS.archive.md:1378`
+- "밴드 3색 소비처가 셋…인데 2.2가 앞의 둘만 갱신" — `dividend-sim/PROGRESS.md:1741`
+- "중복 접수 금지 규칙을 사용자 재지시에까지 과적용" — `myro-ai-company@a95c498`
+
+**기타 — 문서·문안 사실 오류 재작업 루프**
+- "재작업마다 빌더가 해설 문장을 덧붙여 새 오류를 만들었다 — 5회차에서 '교체 문구 지정·덧붙이기 금지'로 전환하자 수렴" — `myroquant/PROGRESS.md:779` (xwk.7, 시도 6회)
+- "1R 인용 파일명·줄번호·수치 혼동 / 2R 부록 호출부 사실 오류 / 3R 수익률 합계 단위 / 4R 익절 기준이 코드와 반대" — `myroquant/PROGRESS.md:3934` (adj.2, 시도 5회)
+
+**컨텍스트 부족 (오케스트레이터 브리핑 오류)**
+- "오케스트레이터 red 브리핑이 키 형식을 실측 없이 예시(`futures:foreign`)로" — `myroquant/PROGRESS.archive.md:663`
+  - myroquant의 FAIL사유 중 "브리핑"이 원인으로 적힌 것은 13건이다 (PROGRESS.md 7 + archive 6).
+- "원인: 오케스트레이터 red 브리핑 오기" — `donmac/PROGRESS.archive.md:852`
+
+---
+
+## 3. 증상 → 원인 → 근거
+
+근거가 비어 있는 행은 넣지 않았다. 여러 프로젝트에서 반복되는 순서로 정렬했다.
+
+"발생 구간"은 근거가 나온 시점의 dev-kit 구간(§0-1)이다. "현행 상태"는 이렇게 판정했다.
+- **미해결**: 현행 버전(E6)에서도 재현됐다.
+- **부분 해소**: 이후 버전에 대응 기능이 들어갔고 효과도 일부 관측됐지만, 잔여 재현이나 미적용 프로젝트가 있다.
+- **해소(버전 산물)**: 이후 버전이 고쳤고, 현행에서는 재현되지 않았다.
+- **현행 근거 없음**: 대응 기능도 없고 E6에서 재현됐다는 근거도 없다.
+
+| # | 증상 | 원인 | 근거 | 발생 프로젝트 | 발생 구간 | 현행 상태 |
+|---|---|---|---|---|---|---|
+| S1 | 같은 업무규칙을 여러 stage에 걸쳐 재정의·재수정 | 설계에 규칙이 추상 문장 1줄만 있고 **입력→기대 케이스 예시가 없음**. 경계 케이스는 FAIL이나 실데이터가 나온 뒤에야 사용자에게 물음 | `myrocrypto/DESIGN.md:61` · `myrocrypto/PLAN.md:1876-1879` (D8~D11 "리뷰 FAIL 후", 10-10) · ADR 015 `@3d1a6c0 @17252e4 @dfcfe52 @af1bc5d` (10-05~10-11) · `donmac@43d841d…@920a457` (09-17~09-21) · `donmac/docs/decisions/003:3` | myrocrypto, donmac, myroquant, capital-flow, market-flow | E2~**E6** | **미해결** — 대응 기능 없음 |
+| S2 | 핵심 규칙 번복 → 이전 결과 무효화와 전면 재실행 | 가격 축 규칙(raw)을 분할·병합 종목 사례로 검증하지 않고 확정 | `myroquant/PROGRESS.archive.md:75-78` (08-09) → `myroquant/PLAN.md:71-76` (adj.1~3, 10-11) | myroquant | E2 결정 → **E6** 번복 | **미해결** |
+| S3 | 규칙 결함이 16개 stage의 리뷰·통합검증을 통과하고 사람의 수동 점검에서 발견됨 | 리뷰가 태스크 diff 단위라 도메인 불변식 위반(규칙 미배선·조용한 무시)을 보는 케이스가 없음. 데모 E2E도 결함을 판별하지 못함 | `myrocrypto/PLAN.md:241,1725` · `myrocrypto/docs/stage21-report.md:13,95` · `myrocrypto/docs/2nd-phase-audit.md:24,59` (`@413c1a1`, 10-03) | myrocrypto | E2~**E6** | **미해결** — v1.6 요구사항 추적표가 있었는데도 통과 |
+| S4 | 같은 화면을 여러 stage에서 재작업. 사용자가 써 보고 나서야 결함이 드러남 | **화면 명세가 없거나 사후 작성**. 동작 요구가 PLAN 태스크 1줄로만 존재 | `myrocrypto/PLAN.md:1545` · `myrocrypto/docs/screens.md:4` · `myroquant/PLAN.md:1146,1286` (ui~ux5 = 08-16~09-03) · `myroquant@87818c5` (09-04) · `dividend-sim@0f43344→@23b0e09→@2ac1ca8` (07-18~19) · `dividend-sim/docs/DECISIONS.md:603` | myroquant, myrocrypto, dividend-sim | E0~E5 (v1.14 이전) | **부분 해소** — v1.14.0 screens.md. 신규 프로젝트 효과: 화면 UX FAIL donmac 0 · capital-flow 1. 잔여: myrocrypto는 사후 작성 뒤에도 UX FAIL 2건 (20.1 10-03, 22.7 10-08). myroquant는 v1.14 미적용 (screens.md·`ui:` 없음) |
+| S5 | 출력물(리포트 표)의 사양이 stage마다 바뀌고 기존 기대 문자열을 계속 교체 | 표 구성·컬럼 순서·색·범례가 사전에 없고 출력물을 본 뒤 피드백으로만 확정 | `myro-market-flow/PLAN.md:283,365-367` · `myro-market-flow@19c2168` (08-24) · `myro-market-flow/PROGRESS.md:15,33` | market-flow | E5 | **현행 근거 없음** — v1.14.2 `ui: static`이 리포트 출력을 덮는지는 프로젝트에 적용된 적이 없어 미검증 |
+| S6 | 화면 요소 하나가 연쇄로 수정됨 (라벨→복제→오프셋→죽은 테스트) | 차트 정렬·팔레트 규칙 미명세. 변경 시 소비처를 전수 조사하지 않음 | `dividend-sim@83d5586→@d5e4299→@1e7b712→@07c9850` (09-12 00:45~11:08) · `dividend-sim/PROGRESS.md:1741,1970,2021` | dividend-sim | E5 (v1.14 직전) | **현행 근거 없음** (근거 1개 프로젝트) |
+| S7 | 정답 기준이 진자처럼 흔들림 (watch 96%→0%→25%, 헤딩 레벨 3겹) | 분류·판정 기준에 **사용자가 라벨을 매긴 정답 세트(케이스)가 없음**. 분포 %만 보고 조정 | `youtube-briefing/PROGRESS.md:168,208-215` · `youtube-briefing@40c96a0` (08-02) · `youtube-briefing@2c3a81c:PLAN.md` §9.1 · `mastery-labs/PROGRESS.md:617-620` · `mastery-labs@90b8ca8…@85f73aa` (08-10~15) · `mastery-labs/PLAN.md:14` | youtube-briefing, mastery-labs | E2~E3 | **현행 근거 없음** — 대응 기능도 없음. 원인은 S1과 같음 (예시 부재) |
+| S8 | 프롬프트 규칙을 11회 덧붙이고, 규칙끼리 간섭 | LLM 동작을 검증할 기대값(발화→기대 도구 호출) 세트가 없음. 테스트는 프롬프트 문자열의 존재만 확인 | `myro-ai-company@db96e28` (`toMatch`) · `myro-ai-company/PROGRESS.md:1550,1386` · `@a95c498` | myro-ai-company | **대부분 dev-kit 도입 이전** — orchestrator.ts fix 11건 중 10건이 06-02~07-12 21:40 (v1.0 릴리스 07-12 23:42 이전) | **dev-kit 귀속 불가** — 참고용 |
+| S9 | 테스트는 green인데 실데이터·실환경에서 실패하고, 실물을 넣을 때마다 새 결함이 한 겹씩 드러남 | 합성 픽스처가 실제 분포·경계·응답 구조를 담지 않음. **실환경 대조가 계획 맨 끝에 한 번뿐** | `donmac@7b87dc7` (10-01) · `donmac/PROGRESS.md:421` · `myro-capital-flow/PROGRESS.archive.md:243` · `mastery-labs/PROGRESS.md:452,508` · `myro-market-flow@cbd227a @d597052` · `myro-scraper/PROGRESS.md:279` · `myro-ai-company@f5b1bbf` | 7개 프로젝트 | E0~**E6** | **미해결** — 대응 기능 없음. v1.13 "Stage 0 대역"은 대역을 만드는 규칙이지 실데이터 대조 규칙이 아님 |
+| S10 | builder가 자기 구현에 맞춘 픽스처를 만들고, 뮤턴트가 대량으로 살아남음 | 테스트가 요구사항이 아니라 구현 임계값에서 도출됨 | `mastery-labs/PROGRESS.md:295,313` · `myrocrypto/PROGRESS.archive.md:1847` · `donmac/PROGRESS.archive.md:714` · `myro-capital-flow/PROGRESS.archive.md:91-104` · `myroquant/PROGRESS.md:627` | 루프 안 FAIL 최다 범주 (101건) | E2~**E6** | **부분 해소** — v1.6 뮤테이션 검증과 v1.9 red 확인으로 리뷰가 **잡게** 됐음 (FAIL로 기록되는 것 자체가 그 효과). 그러나 builder가 약한 테스트를 쓰는 원인은 그대로라 재시도 비용으로 남음 |
+| S11 | 문서·문안 재작업이 5~6회 FAIL 루프 | 재작업 builder가 설명 문장을 덧붙이며 새 사실 오류를 만들고, 리뷰는 매 라운드 새 문장을 다시 검증 | `myroquant/PROGRESS.md:779` (xwk.7, 09-12) · `myroquant/PROGRESS.md:3934` (adj.2, 10-11) · `myroquant/CLAUDE.md:28` (규칙 추가 후에도 재발: `PROGRESS.md:3889,3921`) | myroquant | **E6** | **미해결** |
+| S12 | 통합검증 FINDINGS가 새 stage를 연쇄로 만듦 | FINDINGS를 같은 범위 안에서 닫지 않고 후속 stage로 이월 | `myroquant/PLAN.md:231,237,1353` · 통합검증 103건 중 FAIL 28 | myroquant | E5~**E6** | **미해결** |
+| S13 | NON-BLOCKING으로 이월한 결함이 운영 결함이 됨 (721개 누적) | 이월 항목에 담당 태스크나 기한이 없음 | `trend-keyword/PROGRESS.md:57,84,98` → `trend-keyword/PLAN.md:122-123` (`@b5499fb`, 08-15) | trend-keyword | E0~E2 | **부분 해소** — v1.8.1 RESUME 누적 NON-BLOCKING, v1.9 stage-reviewer 브리핑 ④ 누적 NON-BLOCKING으로 **보이게는** 됐음. 닫는 규칙(담당·기한)은 여전히 없음 (`commands/execute-plan.md:408` "이번에 반영할 것을 얹어"). 현행 재현 근거는 없음 |
+| S14 | 같은 결함 클래스가 재발함 | FAIL의 교훈이 다음 브리핑이나 규약으로 환류되지 않음 | `triangular-arbitrage/PROGRESS.archive.md:83↔120, 114↔124` · `triangular-arbitrage/PROGRESS.md:60` · `mastery-labs/PROGRESS.md:447` (3.3↔5.1b) | triangular-arbitrage, mastery-labs | E2 | **미해결** — E6 재현: myroquant 문안 오류가 CLAUDE.md 규칙 추가 뒤에도 재발 (S11) |
+| S15 | 오케스트레이터 브리핑 오류가 FAIL의 원인 | red·green 브리핑이 실측 없이 예시 값이나 공식을 전달 | `myroquant/PROGRESS.archive.md:663,1018,2212` · `donmac/PROGRESS.archive.md:647,852` · "브리핑" 원인 FAIL 날짜: myroquant 08-02~09-26 (13건 중 11건이 v1.9 이후), donmac 09-14~09-27 (5건), capital-flow 09-28·10-03 (2건) | myroquant, donmac, capital-flow | E2~**E6** | **미해결** — v1.9에서 브리핑 작성 책임을 오케스트레이터로 옮긴 뒤에도 계속 발생 |
+| S16a | 소요 지표 측정 불가 (`- 시작:` 0건) | 기록 시기가 v1.11 (`- 시작:` 신설, 08-18) 이전 | 7개 프로젝트 모두 마지막 태스크 기록이 08-16 이전 (§1-2b) | 7개 | E0~E3 | **해소(버전 산물)** — v1.11 이후 프로젝트(donmac, capital-flow, myrocrypto 후반)는 기록됨 |
+| S16b | 기록 계약 미준수 · 재시도율 0%로 형식화 의심 | `유형(…)` 태그 미기재, `- 시작:`에 시각 대신 자리표시 문구 | `myrocrypto` FAIL사유 76줄 중 태그 0 (v1.3.1 계약 이후 기록) · donmac 태그 없는 줄 12 · capital-flow 10 · `myro-market-flow/PROGRESS.md:17` 등 PROGRESS 6줄·archive 15줄 전부 (v1.11 이후 기록) | myrocrypto, donmac, capital-flow, market-flow | E2~**E6** | **미해결** — 계약은 있으나 준수 검사가 없음 |
+
+### 반복 횟수 분포 (Phase 2 D의 N 결정용 원자료)
+
+같은 규칙·화면·기능에 대한 재정의·재작업 회수를 실측한 값이다.
+
+| 대상 | 회수 | 근거 | 구간 |
+|---|---|---|---|
+| donmac 점유율 분모 | 재정의 3회 (커밋 6) | `donmac@43d841d…@920a457` | E6 |
+| capital-flow "조회창 < 필요 이력" | 재발 3회 | `myro-capital-flow/PLAN.md:30,35` · `PROGRESS.md:3` | E6 |
+| capital-flow 내부 코드명 노출 | 수정 3회 | `@59cd2d5 @7bcfdae @5568355` | E6 |
+| mastery-labs 헤딩 트리 | 3겹 | `@90b8ca8 → @c325ae9 → @cd2b8e0…@85f73aa` | E2~E3 |
+| youtube-briefing 라벨 기준 | 3라운드 | `PROGRESS.md:168,208,211` | E0~E2 |
+| dividend-sim 푸터 | 재설계 3회 | `@0f43344 @23b0e09 @2ac1ca8` | E0 |
+| dividend-sim x축 라벨 | 4단 | `@83d5586 … @07c9850` | E5 |
+| myrocrypto 체결·청산 규칙 | stage 4개 (ADR 015 개정 4회) | 위 S1 | E2~E6 |
+| 태스크 단위 최대 시도 | 6회 (capital-flow 1.2, myroquant xwk.7) | `myro-capital-flow/PROGRESS.archive.md:91-104` · `myroquant/PROGRESS.md:779` | E6 |
+
+→ 관찰된 반복은 **3회째에 몰려 있고**, 현행 구간(E6)에서도 같은 분포가 나온다 (donmac, capital-flow). 기존 "3회 연속 FAIL 정지"는 태스크 하나 안에서만 센다. 규칙·화면 단위로 stage를 넘나드는 반복은 세지 않는다.
+
+---
+
+## 4. "지금 루프가 제대로 돌고 있는가" 판정
+
+판정 기준:
+- **정상**: 결함의 주 발견처가 루프 안이다. 재시도율이 대략 10~30%이고, 사후 사용자 발견이 반복되지 않는다.
+- **부분**: 루프는 돌지만 결함의 주 발견처가 루프 밖(사용자·실환경)이거나, 재시도율이 30%를 크게 넘어 수렴하지 않는다.
+- **미작동**: 수정 반복이 대부분 루프 밖에서 기록 없이 일어나거나, FAIL 0%라 리뷰가 실제로 판별했다는 근거가 없다.
+
+| 프로젝트 | 실행 구간 | 판정 | 이유 (1줄) |
+|---|---|---|---|
+| myroquant | E0~**E6** | 부분 | 리뷰는 실결함을 잡지만 재시도율 E5 38%→E6 44%로 악화. 업무규칙·화면은 사용자 실사용으로만 드러남. v1.14 미적용 |
+| myrocrypto | E2~**E6** | 부분 | FAIL 88건을 루프 안에서 잡았지만 도메인 결함 6건은 16개 stage를 통과하고 수동 점검에서 발견 |
+| donmac | **E6** | 부분 | 변이 리뷰와 3회 정지는 작동하나 도메인 사실이 실데이터로만 드러나 재시도율 39.7%, 규칙 재정의 반복. 화면 UX FAIL은 0 |
+| myro-capital-flow | **E6** | 부분 | 병렬이 실제로 작동한 유일한 프로젝트(v1.10 mode A)지만 비현실적 픽스처와 미정의 계약으로 재시도율 51.7% |
+| dividend-sim | E0~E6 (주로 E0) | 부분 | 태스크 루프는 수렴했지만 도메인 매핑 오해 4건과 UX 결함 5건을 전부 사용자가 사후 발견 (UX 피드백은 v1.14 이전) |
+| **myro-market-flow** | E5 | **미작동** | v1.13 시기인데 Stage 19~23 FAIL 0%, `- 시작:` 자리표시, Stage 1~18 기록 없음. 표 사양 변경은 전부 사용자 피드백으로 이루어짐 |
+| mastery-labs | E0~E3 | 부분 *(구버전)* | 재시도율 E2 80%. 실서적 검증이 맨 끝 1회라 실환경 단계에서 태스크가 21건에서 41건으로 늘어남 |
+| triangular-arbitrage | E2 | 부분 *(구버전)* | 검증은 엄격하지만 재시도율 52%이고, 교훈이 이월되지 않아 같은 결함 클래스가 3건 재발 |
+| trend-keyword | E0~E2 | 부분 *(구버전)* | NON-BLOCKING 이월이 운영 결함이 됨 (v1.8.1·v1.9에서 가시화는 보강됨). 8단계부터는 대부분 루프 밖 |
+| myro-ai-company | E0 (+ dev-kit 이전) | 부분 *(구버전)* | 코드 루프는 수렴했지만 LLM 동작 결함은 기대값이 없어 실모델·사용자가 발견. 프롬프트 수정 대부분은 dev-kit 이전 |
+| **youtube-briefing** | E0 | **미작동** *(구버전)* | v1.0~1.2 시기만 루프를 돌았고 FAIL 0/22. stage-reviewer(v1.3)·verify 게이트(v1.9) 이전이라 현행 루프에 대한 증거가 아님 |
+| myro-scraper | E2 | 정상 *(구버전)* | 재시도율 14.3%로 건강 범위 안. 리뷰가 커밋 전에 잡고, 실토큰 스모크가 픽스처↔실 API 불일치를 잡음 |
+| maro-automation | E0 | 정상 *(구버전)* | 소규모(11태스크, 9.1%). 수정 루프 징후 없음 |
+
+*(구버전)* = 태스크 기록이 v1.13 이전에 끝나, 현행 dev-kit의 작동 여부를 말해 주지 않는 판정이다.
+
+참고: 하위 조사 결과에서 triangular-arbitrage는 "정상", market-flow와 youtube-briefing은 "부분"이었다. 이 문서는 위 기준을 일관되게 적용해 판정을 조정했다. 실행 구간 열은 2026-10-14 사용자 요청으로 추가했다.
+
+---
+
+## 5. Phase 2 후보 대비 근거 유무 (미리 보기 — 설계는 Phase 2에서)
+
+| 후보 | 이 진단의 근거 | 상태 |
+|---|---|---|
+| A. docs/rules.md (규칙 + 입력→기대 예시, verify에 `#R` 연결, reviewer 예시 행 추적) | S1·S2·S3 (모두 E6에서 재현, 대응 기능 없음)·S7, 업무규칙 FAIL 62건과 사후 사용자 정정 다수. S8은 dev-kit 이전이라 근거에서 제외. 예시가 충실한 두 곳(triangular-arbitrage, myro-scraper)은 도메인 반복이 없음 | **근거 강함** |
+| B. 케이스 단위 질문 + 영역별 커버리지 표 | 1-4: 기록이 있는 6개 프로젝트 모두 케이스 단위 질문 0. myrocrypto D9 사후 발견 | 근거 있음 (질문 원문 기록이 없어 질문 수는 n/a) |
+| C. 디자인 단계 (/design · Handoff · docs/design/) | S4·S6: 화면 반복의 원인은 시각 디자인 부재보다 **화면 명세(동작·상태) 부재/사후 작성**. S4는 v1.14.0 screens.md로 부분 해소됐다 (donmac UX FAIL 0, capital-flow 1). "디자인 별로" 류 피드백은 dividend-sim 푸터 1건뿐이고 v1.14 이전 (07-18) | 근거 약함 — 기존 프로젝트에 v1.14를 적용(migrate)하는 것이 먼저 |
+| D. 같은 파일·화면·규칙 N회 초과 시 패치 중단 → 스펙 공백 질문 | 반복 분포가 3회에 몰림. 기존 정지 규칙은 태스크 내부만 셈 (S12도 연관) | 근거 있음 (N=3 후보) |
+| E. /metrics·audit에 fix 비율·핫스팟 | fix 비율은 2.6~14.9%라 판별력이 낮음. 재시도율·재정의 반복이 더 잘 드러남 | 핫스팟은 근거 약함. 재정의 반복 지표는 검토 가치 있음 |
+| (후보 외) 실데이터 대조 조기 게이트 | S9: 7개 프로젝트, E6에서도 재현 (donmac, capital-flow) | 신규 후보 (근거 강함) |
+| (후보 외) 테스트를 요구사항에서 도출 (A의 예시와 연결) | S10: 루프 안 FAIL 최다 범주 | A에 흡수 가능 |
+| (후보 외) 재작업 시 교체 문구 고정·덧붙이기 금지 | S11 | 신규 후보 (근거 1개 프로젝트) |
+| (후보 외) NON-BLOCKING 이월에 담당·기한 부여, FAIL 교훈 환류 | S13 (부분 해소, 현행 재현 없음) · S14 (E6 재현: S11) | NON-BLOCKING은 보류 후보, 교훈 환류는 신규 후보 |
+| (후보 외) 오케스트레이터 브리핑 값의 실측 출처 명시 | S15 | 신규 후보 |
+| (후보 외) 기록 계약 준수 검사 (`유형` 태그, `- 시작:` 자리표시) | S16b (S16a는 버전 산물이라 제외) | migrate 또는 metrics 검사 후보 |
+
+---
+
+## 6. 버전별로 이미 고쳐진 것 / 아직 남은 것
+
+### 6-1. 이후 버전에서 고쳐졌거나 효과가 관측된 것
+
+| 고쳐진 버전 | 무엇이 | 근거 |
+|---|---|---|
+| v1.14.0 (screens.md) | 화면 명세 없이 구현 → 실사용 후 재작업 (S4). v1.14 이후 시작한 두 프로젝트는 처음부터 screens.md를 두었고, 화면 관련 리뷰 FAIL이 donmac 0건, capital-flow 1건이다. 이전의 myrocrypto Stage 16 (09-12, 화면 스펙 없이 착수)은 UX FAIL 5건이었다 | §1-2b · `myrocrypto/PLAN.md:1545` · `donmac/docs/screens.md` · `myro-capital-flow@a221e16` |
+| v1.10 (mode S/A/B + worktree) | v1.10 이전의 `[P]` "병렬"은 대부분 묶음 커밋이었다 (youtube-briefing, triangular-arbitrage, trend-keyword, maro-automation). v1.10 이후 capital-flow는 실제 병렬이 돌았다 (머지 16건, 그룹 내부 2.0~2.6×) | §1-1 `[P]` 열 |
+| v1.11 (`- 시작:`) | 소요 지표 측정 불가 (S16a). 7개 프로젝트의 n/a는 전부 v1.11 이전 기록이고, 이후 프로젝트는 측정됐다 | §1-2 · §1-2b |
+| v1.6 · v1.9 (뮤테이션 검증, red 확인, verify 게이트) | 약한 테스트를 **리뷰가 잡게** 됐다 (S10 부분 해소). E0의 재시도율 0~5%는 리뷰가 덜 잡았던 시기의 값이다 | §1-2b 구간별 재시도율 |
+| v1.8.1 · v1.9 (누적 NON-BLOCKING 인계) | NON-BLOCKING이 RESUME과 stage-reviewer 브리핑에 **보이게** 됐다 (S13 부분 해소). dividend-sim은 E6에서 stage-reviewer NON-BLOCKING을 다음 PLAN으로 닫았다 (`dividend-sim/PLAN.md:6`) | `commands/execute-plan.md:344,390` |
+
+### 6-2. 현행 버전(E6)에서도 재현된 것 — Phase 2의 대상
+
+| 증상 | E6 재현 근거 |
+|---|---|
+| S1 업무규칙 재정의 (케이스 예시 없음) | donmac 점유율 분모 (09-17~09-21), myrocrypto D8~D11 (10-10), capital-flow D3~D10 (09-28~10-09) |
+| S2 핵심 규칙 번복 | myroquant adj (10-11) |
+| S3 도메인 결함이 리뷰·통합검증을 통과 | myrocrypto 2nd-phase audit (10-03) |
+| S9 mock green → 실데이터 실패 | donmac BarSeries `@7b87dc7` (10-01), capital-flow 공표 지연 (archive:243) |
+| S10 builder의 약한 테스트 (재시도 비용) | donmac archive:714, capital-flow 1.2 시도 6회 |
+| S11 문안 재작업 루프 | myroquant xwk.7 (09-12), adj.2 (10-11) |
+| S12 통합검증 FINDINGS → stage 연쇄 | myroquant xg·xwk |
+| S15 브리핑 오류 | donmac 5건 (09-14~09-27), capital-flow 2건, myroquant 09-26 |
+| S16b 기록 계약 미준수 | myrocrypto 유형 태그 0, donmac 12줄·capital-flow 10줄 태그 없음 |
+| 재시도율 30% 초과 | E6: myroquant 44% · donmac 39% · capital-flow 51% · myrocrypto 31% |
+
+### 6-3. 현행 적용 상태 (기존 프로젝트가 최신 규격을 쓰고 있는가)
+
+| 프로젝트 | 마지막 활동 | 현행 규격 적용 |
+|---|---|---|
+| myroquant | 10-12 | migrate v1.12까지 (`@41f6ab2`). **v1.14 미적용** — screens.md·`ui:` 없음, DESIGN 범위가 현재 주력 작업을 다루지 않음 |
+| myrocrypto | 10-12 | migrate v1.12 (`@de21d55`). `ui: interactive` 있음 (v1.14.2 반영), screens.md는 사후 작성 |
+| donmac | 10-12 | v1.14 규격으로 시작 |
+| myro-capital-flow | 10-11 | v1.14.0 규격으로 시작. `ui:` 헤더 미반영 (v1.14.2 직전 작성) |
+| 나머지 9개 | 08-24 이전 (dividend-sim 09-12) | 구버전 기록. 재개하면 migrate 필요 |

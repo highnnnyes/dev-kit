@@ -3,6 +3,62 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.15.0 — 2026-10-14
+수정 루프 차단. 13개 실프로젝트 실측 진단(`docs/diagnosis-2026-10.md` — 프로젝트별
+실행 버전 구간 E0~E6 대응, 현행 버전(E6)에서 재현된 증상만 처방 근거)에서
+루프의 주 동력은 **스펙(규칙·화면·실데이터)에 정답 예시가 없음 → 구현 →
+사용자·실데이터가 결함 발견 → 재정의**였다. 같은 규칙·화면의 반복은 3회째에
+몰렸다. 설계·근거 행·보류 목록·사전 등록 효과 판정 기준은 `docs/v1.15-design.md`.
+
+- **A 업무 규칙 `docs/rules.md`** [엄격]: brainstorming이 규칙 대상(계산·판정·
+  분류·수치 기준·상태 전이)을 판정하고(모델이 none으로 좁히지 않음), 규칙마다
+  원칙 1줄 + 입력→기대 예시 2개 이상(1개 이상 경계·예외)을 확정 — 예시가 비면
+  저장 금지. PLAN 헤더 `rules:`, 규칙 태스크 verify에 `docs/rules.md#R3 기준`,
+  **예시 ID = 테스트 케이스 ID**. execute-plan이 규칙 발췌를 builder 브리핑과
+  리뷰 입력 ⑥에 넣고, reviewer는 예시 1개 = 추적표 1행(예시 ID 테스트 + 실행
+  출력만 증거). builder-light는 규칙 발췌를 받으면 `[판단 필요]` BLOCKED.
+  stage-reviewer (d)에 규칙 drift, docs 스킬에 rules.md 행·drift 스캔, grill에
+  케이스 각도. 근거: 진단 S1·S2·S3·S10.
+- **B 질문 방식**: 5항목은 최소 안전선, 이후 케이스 단위 질문("입력 X면
+  결과는?" — 같은 규칙 케이스는 표로 묶어 질문 가능 [유연]) + DESIGN.md
+  **질문 커버리지 표** [엄격](영역별 추상/케이스/미결 — 빈칸 금지). 근거: 진단
+  §1-4(케이스 질문 0/6).
+- **C 디자인 확인** [엄격]: screens.md 확정 후 — Artifact Design 타입을 쓸 수
+  있으면 캔버스 생성, 없으면 "디자인 순서입니다"로 멈추고 `docs/design/`에
+  Handoff·HTML export 요청 → screens.md와 화면별 대조, 차이 0 전에는
+  write-plan 금지. PLAN 헤더 `design:`(skip은 사용자만). 리뷰 입력 ⑤에 디자인
+  파일 경로. 근거: 사용자 결정(esi-flow UI 전면 재설계 2026-09-30 — 시각 디자인
+  불만은 PROGRESS에 기록되지 않아 진단으로 측정 불가). `/design` 실측 기록은
+  README.
+- **D 대상 반복 정지** [엄격]: PROGRESS `- 대상:` 줄(verify의 rules·screens
+  참조를 기계적 전사) + 보완 태스크 표시 `· 보완: stage-review|merge-fail|
+  user-fix`. 같은 키의 사건(FAIL후PASS·BLOCKED·보완 태스크)이 stage를 넘어
+  누적 3회면 패치 중단 → "스펙 공백 질문" DECISIONS, 답 반영(rules·screens
+  먼저 갱신) 후 계수 리셋. 중단 조건 (j). 근거: 진단 반복 횟수 분포·S12.
+- **E metrics** 행 2개: 재정의 반복(대상 키 상위 5), 기록 계약 준수(유형 누락·
+  `- 시작:` 비시각 건수). fix 비율·핫스팟은 판별력이 낮아 넣지 않음.
+- **F 결정 저널** [엄격]: `docs/journal.md`(append-only, 출처 태그 `[내 판단]`·
+  `[AI 제안→내가 채택]`·`[AI 자율]` — AI 제안을 내 판단으로 기록 금지),
+  결정 저널 게이트(DECISIONS 답변·계획/mode B 승인·정정·측정에 의한 방향 전환은
+  기록 후에만 진행, 서브에이전트 금지), ADR `출처:` 칸, amend 허용 파일에
+  journal 추가. 신규 커맨드 `/dev-kit:journal` — backfill(추측 태그 금지,
+  출처 미확인은 일괄 확인), portfolio(`docs/portfolio.md` 1장).
+- **G 실샘플 조기 확보** [엄격]: 외부 데이터 파싱은 첫 stage에 실응답 샘플
+  확보 태스크(`tests/fixtures/real/`, 수집 명령은 사용자 확인), 파싱 verify는
+  실샘플 테스트 포함, reviewer 행. 근거: 진단 S9(7개 프로젝트, E6 재현).
+- **H 재작업 BLOCKING ID** [엄격]: reviewer BLOCKING에 `B1`… 순번, 재작업
+  브리핑은 ID 그대로 + builder CHANGED `← B1`, 재작업 라운드는 **어느 ID와도
+  연결되지 않은 새 서술만** BLOCKING. 근거: 진단 S11(6회·5회 FAIL).
+- **I 브리핑 값 출처** [엄격]: 브리핑의 구체 값에 `파일:줄`·예시 ID·실행 출력
+  병기, 없으면 `미확인 — builder가 확인`. 근거: 진단 S15.
+- migrate: `rules:`·`design:` 사용자 확인 후 기입(추정 금지, ui: none이면
+  design n/a), rules.md 골격만·journal 골격, 수정 허용 파일 5개.
+- 헌법 §4: rules/design/ui 헤더·(j)·결정 저널 요약 + 보류 WARNING 해소(v1.12
+  프로비저닝·mode 재판정·migrate, ui: 헤더 요약 미반영분).
+- audit C에 v1.15 계약 6종 추가, amend 허용 파일·기록 의무 문구 갱신.
+- dev-kit 자체 `docs/journal.md` 신설(2026-10-14 결정 11항목). v1.0~v1.14
+  백필은 출처 확인 후 추가.
+
 ## v1.14.2 — 2026-09-12
 "UI가 있는 설계"의 정의 부재 봉합. 실측: HTML 리포트 프로젝트에서 "웹 UI
 없음 = 화면 없음"으로 판단해 screens.md 없이 write-plan이 진행됐다.

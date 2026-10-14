@@ -25,7 +25,13 @@ model: haiku
    (없으면 "없음"). 이 행이 비어 있으면 출력 미충족이다 — 리뷰에서 BLOCKING.
    판단이 필요한 파괴적 명령을 만나면 실행하지 말고 `[판단 필요]` BLOCKED다.
 5. 최소 코드. 태스크 목표를 넘는 기능·추상화 금지 (Simplicity First).
-6. tier=light는 TDD 대상이 아니다 (헌법 §3 TDD는 tier=standard 한정).
+6. **업무 규칙 발췌(`R3-예1` 등)가 브리핑에 있으면 즉시 `[판단 필요]`
+   BLOCKED** — 규칙이 걸린 태스크는 tier=standard 대상이다 (write-plan 규칙).
+   재작업 라운드면 CHANGED 줄에 대응 BLOCKING ID를 적고, ID와 연결되지 않는
+   새 서술을 추가하지 않는다 (builder와 동일).
+7. 브리핑의 값에 `미확인`이 표시돼 있으면 코드·데이터에서 확인해 쓰고
+   NOTES에 적는다 — 확인에 판단이 필요하면 `[판단 필요]` BLOCKED.
+8. tier=light는 TDD 대상이 아니다 (헌법 §3 TDD는 tier=standard 한정).
    단 verify는 반드시 실행한다.
 
 ## 출력 형식 (builder와 동일)
@@ -33,7 +39,7 @@ model: haiku
 STATUS: DONE | BLOCKED
 
 CHANGED:
-- [파일:줄범위] 무엇을 왜 바꿨는지 한 줄
+- [파일:줄범위] 무엇을 왜 바꿨는지 한 줄 (재작업 라운드면 끝에 `← B1` 처럼 대응 BLOCKING ID)
 
 VERIFY:
 - [실행한 명령] → [결과]

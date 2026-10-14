@@ -30,6 +30,33 @@ PDF 등 조작 없는 산출물, none=CLI·라이브러리·배치). none이면 
 없으면 수정하지 않고 4의 보고 대상에 "screens.md 부재 — brainstorming
 화면 설계 필요"로 올린다. 이미 `ui:` 라인이 있으면 그대로 둔다.
 
+### rules 필드 — 기본값 추정 금지 [엄격]
+PLAN.md 헤더에 `rules:` 라인이 없으면 **사용자에게 객관식으로 확인한 뒤**
+추가한다: `rules: docs/rules.md | none (근거)` (write-plan "rules·design
+필드" 기준 — 계산·판정·분류·수치 기준·상태 전이 규칙이 있으면 대상).
+ui 필드와 같은 이유로 추정하지 않는다. 대상인데 `docs/rules.md`가 없으면
+**골격만** 만든다 — `# 업무 규칙`, `## 용어집`(빈 표), `## 규칙`(R1 템플릿:
+원칙 1줄 + 예시 표 머리행) — 규칙 내용·예시는 쓰지 않는다 (추측 금지).
+그리고 4의 보고에 "rules.md 예시 미작성 — brainstorming 업무 규칙 정의
+필요"를 올린다. 이미 `rules:` 라인이 있으면 그대로 둔다.
+
+### design 필드 — 기본값 추정 금지 [엄격]
+`ui: interactive|static`인데 헤더에 `design:` 라인이 없으면 사용자에게
+객관식으로 확인한다: ① 디자인 자료가 `docs/design/`에 있고 screens.md와
+대조 완료 → `design: docs/design/ (대조 완료 날짜)`, ② 디자인 단계 생략 →
+`design: skip (사용자가 말한 사유)`, ③ 아직 → 헤더에 쓰지 않고 4의 보고에
+"디자인 확인 미완 — brainstorming 디자인 확인 필요"로 올린다.
+`ui: none`이면 `design: n/a (ui: none)`을 자동 기입한다 (판정이 아니라
+파생값이다). 이미 있으면 그대로 둔다.
+
+### journal 골격
+`docs/journal.md`가 없으면 빈 골격(`# 결정 저널` + 형식 안내 주석 1줄 —
+docs 스킬 "결정 저널")을 만든다. 과거 결정 채우기는 migrate의 일이 아니다
+— 보고에 "`/dev-kit:journal backfill`로 과거 결정 정리 가능"을 1줄 남긴다.
+1의 사용자 확인(ui·rules·design)은 결정 저널 항목으로 기록한다 (출처
+`[내 판단]` — 추천안 없이 사실 확인으로 묻고 사용자가 답한 값이라 AI 제안
+채택이 아니다. 추천안을 붙여 물었다면 `[AI 제안→내가 채택]`).
+
 ## 2. 프로비저닝
 
 1의 판정 결과(또는 기존 헤더의 mode)에 따라 write-plan의 프로비저닝 규칙과
@@ -65,6 +92,9 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
   통합 stage 태스크")을 함께 제시한다.
 - `ui: interactive|static`인데 `docs/screens.md`가 없는 계획 (1의 ui 필드
   확인에서 발견 — 화면 설계를 건너뛴 상태)
+- `rules: docs/rules.md`인데 예시가 빈 규칙이 있는 계획 (골격만 만든 경우
+  포함 — 규칙이 걸린 미완료 태스크는 hold 대상)
+- 디자인 확인 미완 (`ui: interactive|static` + design 사용자 답 ③)
 
 해당 태스크 줄 끝에 `· hold: migrate(위험 보고 — 사용자 결정 대기)` 표시를
 붙인다 — execute-plan은 이 표시가 있는 태스크를 건너뛰고 보고에 포함한다.
@@ -73,8 +103,11 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
 ## 5. 자기 검사·커밋
 
 - 커밋 전에 수정 파일 목록을 검사한다: **PLAN.md·프로젝트 CLAUDE.md·
-  package.json(scripts만) 3개를 벗어나면 커밋 없이 중단·보고한다 [엄격]**
-  (package.json은 scripts 외 필드 변경도 위반이다).
+  package.json(scripts만)·docs/rules.md(신규 골격만)·docs/journal.md 5개를
+  벗어나면 커밋 없이 중단·보고한다 [엄격]** (package.json은 scripts 외 필드
+  변경도 위반이다. rules.md는 **없던 파일의 골격 생성만** 허용 — 기존
+  rules.md 수정은 위반이다. journal.md는 골격 생성과 1의 사용자 확인 항목
+  append만 허용).
 - 정상이면 `[dev-kit-migrate] v<dev-kit 버전> 규격 반영` **단일 커밋**을
   만들고, 변경 요약·판정 근거·보고 항목(hold 목록)을 출력한다.
 - 변경이 0건이면 커밋하지 않고 "변경 0건 — 이미 현행 규격"으로 보고한다.

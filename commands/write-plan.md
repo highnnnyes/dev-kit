@@ -11,6 +11,8 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    `docs/screens.md`가 있으면 입력으로 함께 읽는다 (brainstorming이 확정한
    화면 스펙 — UI 태스크의 verify 기준이 된다). DESIGN.md의 화면 설계 대상
    판정(ui: interactive|static|none)도 읽어 아래 "ui 필드"로 옮긴다.
+   `docs/rules.md`(업무 규칙·예시)와 DESIGN.md의 `rules:`·`design:` 줄도
+   읽어 아래 "rules·design 필드"로 옮긴다.
 2. **단계(stage)**: 독립적으로 검증 가능한 기능 단위. 각 단계는 완료 조건을 가진다.
 3. **태스크(task)**: 한 단계를 **verify 하나로 통과/실패가 갈리는 단위 —
    신규/확장 테스트 1~2개 + 그 구현**으로 쪼갠 것 (대략 5~10분).
@@ -49,6 +51,29 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
      (`docs/screens.md#섹션명 기준`). `docs/screens.md`가
      없는 UI 태스크는 태스크로 만들지 말고 DECISIONS로 올려 계획 실행 전에
      멈춰라 — 화면 스펙 없는 UI 구현은 builder 즉흥이 된다.
+   - **[엄격] 업무 규칙이 걸린 태스크의 verify에는 대상 규칙을
+     `docs/rules.md#R3 기준` 형태로 명시하고, 그 규칙의 예시 ID(`R3-예1`,
+     `R3-예2`…)를 이 태스크의 테스트 케이스로 지정한다** — 테스트 이름이나
+     파라미터 ID에 예시 ID를 남긴다 (예시 행이 곧 테스트다 — 테스트를 구현에서
+     도출하지 않고 스펙에서 도출하게 하는 장치. 실측: 진단 S10 — 구현 임계값에
+     맞춘 테스트에서 뮤턴트 대량 생존). 규칙이 걸린 태스크는 tier=standard다.
+     `docs/rules.md`에 없는 규칙이나 예시가 없는 규칙이 필요하면 태스크로
+     만들지 말고 DECISIONS로 올려 계획 실행 전에 멈춰라 (screens.md 규칙과
+     같은 패턴).
+   - **[엄격] 외부 데이터를 파싱하는 태스크** (외부 API 응답·크롤링 HTML·
+     파일 피드·타 시스템 export): 그 소스를 처음 다루는 stage의 첫 태스크로
+     **실응답 샘플 확보** 태스크를 둔다 —
+     `- [ ] N.1 [소스명] 실응답 샘플 확보 → tests/fixtures/real/ 고정 · role: test · tier: standard · risk: normal · verify: [샘플 파일 존재·형식 검사 테스트]`.
+     샘플 **수집**(네트워크 호출)은 서브에이전트가 하지 않는다 — 서브에이전트는
+     사용자 확인을 받을 수 없다. 오케스트레이터가 이 태스크 디스패치 **전에**
+     수집 명령을 사용자에게 보여 확인받고 직접 실행해 `tests/fixtures/real/`에
+     저장한다(헌법 §5). builder는 저장된 샘플의 형식 검사 테스트만 쓴다.
+     mode B 트랙에서는 수집이 필요한 태스크를 만나면 BLOCKED로 종료한다
+     (확인 프롬프트에 답할 수 없음). 이후 그 소스의 파싱 태스크 verify는 **`tests/fixtures/real/`
+     샘플 대상 테스트를 1개 이상 포함**한다 — 합성 픽스처만으로는 verify
+     미달이다. 근거: 진단 S9 — 7개 프로젝트에서 합성 픽스처 green·실데이터
+     실패가 반복됐고 현행 버전(E6)에서도 재현. 실샘플 대조를 일찍 한 경우만
+     무사했다.
    - **role 태그**: 이 태스크에 맞는 전문 역할 하나 — 예: `frontend`, `backend`,
      `db`, `test`, `infra`, `docs`. 실행 시 builder에게 해당 전문가 페르소나가
      주입된다. 애매하면 `general`.
@@ -161,6 +186,20 @@ DESIGN.md의 화면 설계 대상 판정(brainstorming — "사람이 보는 화
   stage-reviewer는 `ui: none`인데 통합 diff에 .html/.pdf 등 화면 산출물이
   추가되면 WARNING을 낸다.
 
+## rules·design 필드 [엄격] — 규칙 정의·디자인 확인을 건너뛰었는지 드러나게
+PLAN.md 헤더에 두 줄을 `ui:` 아래에 기록한다:
+- `rules: docs/rules.md | none (근거)` — DESIGN.md의 업무 규칙 대상 판정
+  (brainstorming)에서 가져온다. 계산·판정·분류·수치 기준·상태 전이 규칙이
+  있으면 대상. DESIGN.md에 판정이 없으면 같은 기준으로 판정하되 애매하면
+  사용자에게 묻는다 — 모델이 none으로 좁히지 않는다 (ui 필드와 같은 규칙).
+  대상인데 `docs/rules.md`가 없거나 예시 칸이 빈 규칙이 있으면 태스크를
+  만들지 말고 DECISIONS로 올려 멈춘다.
+- `design: docs/design/ (대조 완료 날짜) | skip (사용자 사유) | n/a (ui: none)` —
+  DESIGN.md의 디자인 확인 결과에서 가져온다. `ui: interactive|static`인데
+  디자인 확인 기록이 없으면 DECISIONS로 올려 멈춘다 (skip은 사용자만 고른다).
+- 근거: ui 필드와 같은 산출물 강제 패턴 — 건너뛴 단계가 헤더 빈칸·none·
+  skip으로 관측된다. 실측 근거는 dev-kit 리포 docs/diagnosis-2026-10.md S1·S4.
+
 ## 실행 모드 판정 (mode: S|A|B) — 계획 생성 직후
 판정 결과를 PLAN.md 헤더에 1줄로 기록한다:
 `mode: S|A|B (근거: 태스크 수, role 종수, 파일 겹침)`
@@ -234,6 +273,8 @@ DESIGN.md의 화면 설계 대상 판정(brainstorming — "사람이 보는 화
 작성: [날짜] · 상태: IN PROGRESS
 mode: A (근거: 태스크 11개, role 3종, 파일 겹침 없음)
 ui: interactive (docs/screens.md)
+rules: docs/rules.md
+design: docs/design/ (대조 완료 2026-10-14)
 
 ## DECISIONS (사용자 결정 필요 — 비어있으면 생략)
 - [ ] D1: [결정 사항 + 선택지 + 트레이드오프]
@@ -247,9 +288,10 @@ ui: interactive (docs/screens.md)
 - [ ] 0.2 [계약 소스에서 mock 서버·응답 픽스처 파생 생성] · 파일: `mocks/...` (신규) · role: test · tier: standard · risk: normal · verify: `npm run test -- contracts/...` (0.1 계약 테스트를 mock 대상으로 확장 실행 — red→green)
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
-- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: `npm run test -- path/to/file.test.ts` (신규 테스트 1~2개 red→green)
+- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: `npm run test -- path/to/file.test.ts` (신규 테스트 1~2개 red→green · `docs/rules.md#R3 기준` — 케이스 R3-예1·R3-예2)
 - [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: `npm run test -- ...` (`mocks/...` 대상 — 신규 테스트 red→green)
 - [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · risk: normal · verify: [방법]
+- [ ] 1.4 [stage-reviewer 보완 태스크] · 파일: `...` · role: backend · tier: standard · risk: normal · verify: `...` · 보완: stage-review   ← execute-plan이 붙이는 표시 (`hold:`는 migrate가 붙인다)
 
 ## Stage 2: ...
 
@@ -258,6 +300,10 @@ ui: interactive (docs/screens.md)
 ```
 
 ## 작성 후
+- **결정 저널 [엄격]**: 사용자가 DECISIONS에 답하거나, 계획을 승인하거나
+  (조건부 승인 게이트 포함), mode B를 승인하거나, 계획 방향을 정정하면
+  `docs/journal.md`에 항목을 남긴 **뒤에** 다음 단계로 간다 (docs 스킬
+  "결정 저널" 형식·출처 태그 3종). DECISIONS 답은 ADR에도 기록한다.
 - DECISIONS가 있으면 계획 실행 전에 사용자에게 결정을 요청하고 멈춰라.
 - 없으면 PLAN.md 요약(단계 수, 태스크 수, 예상 리뷰 포인트)을 보여준다.
   수동 /write-plan 커맨드로 호출된 경우에만 여기서 멈추고
