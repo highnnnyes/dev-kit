@@ -232,8 +232,12 @@
 
 - 파괴적 명령은 두 범주이고 취급이 다르다:
   - **데이터·환경 파괴** (rm -rf, DROP SCHEMA/DATABASE/TABLE, TRUNCATE,
-    docker volume rm·compose down -v, git reset --hard, force-push, 프로덕션
-    배포): 실행 전 반드시 확인을 받는다.
+    docker volume rm·compose down -v, flyway clean, pg_restore, git reset --hard,
+    force-push, 프로덕션 배포): 실행 전 반드시 확인을 받는다.
+    **열거가 아니라 성질로 판단한다** — "되돌리려면 백업이 필요한가?"가 Yes면
+    파괴적이다. (2026-08-11 esi-flow 사고: 당시 목록에 `DROP TABLE`만 있고
+    `DROP SCHEMA`가 없어 서브에이전트가 개발 DB를 통째로 지웠다. 열거형 목록은
+    반드시 새는다.)
   - **되돌리기 — 미커밋 작업을 없애거나 워킹트리를 되돌리는 모든 명령**
     (git checkout <경로> / git restore / git clean / git stash / git rm /
     git branch -D / git reflog expire): 확인이 아니라 **전면 금지**다.
@@ -254,6 +258,16 @@
     (없으면 "없음"). 훅은 문자열 매칭이라 우회 가능하므로, 이 행이 실제
     관측 수단이고 리뷰어가 감사한다.
   - 훅·지시문 위에 **환경 권한**(harden 스킬 L1)이 최종 보증이다.
+- **파괴적 작업 전에 최신 백업이 있는지 먼저 확인한다.** 백업 없이 파괴하지 않는다.
+- **되돌릴 수 없는 것은 권한 설정에서 ask가 아니라 deny로 막는다.** ask는
+  사람이 승인하면 실행되고, 훅·mod(PermissionRequest)가 대신 응답할 수도 있다.
+  반면 deny는 모든 모드(`bypassPermissions` 포함)와 서브에이전트에 적용된다
+  ([permission-modes](https://code.claude.com/docs/en/permission-modes) ·
+  [sub-agents](https://code.claude.com/docs/en/sub-agents)). 도구가 안 막았다는
+  사실이 안전하다는 뜻은 아니다. ("ask가 서브에이전트에서 프롬프트 없이 승인될 수
+  있다"는 이전 문구는 **미확인 — 안전 측 선택**: 현행 공식 문서는 명시적 ask 규칙이
+  auto·bypass 모드에서도 프롬프트하고, 서브에이전트의 프롬프트는 메인 세션으로
+  올라온다고 적는다.)
 - 디버깅 중에는 조사 대상 모듈 밖의 파일을 수정하지 않는다.
 - 버그 수정의 Iron Law: **조사 없이 수정 없다.** 실행 절차(재현→격리→역추적→
   수정+다층 방어, 3회 실패 시 중단·보고)는 debugging 스킬이 규정한다.
