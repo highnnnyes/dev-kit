@@ -4,7 +4,41 @@ description: 기존 프로젝트를 현행 dev-kit 규격으로 올리는 단일
 
 기존 프로젝트를 현행 dev-kit 규격으로 마이그레이션하라. 원칙: **판정과
 기입은 자동, 위험 판단은 보고** — 사람의 일은 보고를 읽고 결정하는 것까지만
-남긴다. 아래 1~5를 순서대로 수행한다.
+남긴다. 아래 0~5를 순서대로 수행한다.
+
+## 0. spec 정리 (v1.16) [엄격] — 다른 단계보다 먼저
+1의 ui·rules 검사가 옛 경로를 "부재"로 오판하거나 `docs/spec/`을 먼저 만들어
+이동이 건너뛰어지지 않도록, 이 단계를 맨 먼저 수행한다. `docs/spec/`이 이미
+있으면 건너뛴다 (멱등). 이미 있는 spec에 "기준: 현재 구현"·"코드가 정본"
+문구가 있으면 4의 보고 대상이다.
+
+**이 단계가 `docs/spec/`을 만들면 그 프로젝트에서 v1.16 규칙이 켜진다**
+(execute-plan 활성 조건). v1.16을 켜지 않고 v1.15 규격까지만 올릴 때(예: v1.15
+효과 측정 중인 프로젝트)는 `$ARGUMENTS`에 `--no-spec`을 준다 — 0단계를 통째로
+건너뛰고, 1의 rules 골격은 v1.15 경로 `docs/rules.md`에 만든다. 보고 첫 줄에
+`spec: 비활성 (--no-spec)`을 남긴다.
+1. **경로 이동**: `docs/rules.md`·`docs/screens.md`(v1.15 경로)가 있으면
+   `git mv`로 `docs/spec/`에 옮기고, PLAN.md의 **헤더(`rules:`·`ui:` 괄호의
+   경로)와 미완료 태스크 verify의 경로 문자열만** 바꾼다 — "헤더가 있으면 그대로
+   둔다" 원칙의 유일한 예외다(경로가 사라진 파일을 가리키지 않게). ID·내용·
+   PROGRESS `- 대상:` 키는 그대로다 (ID 변환 없음). 옮긴 파일의 내용은 이
+   단계에서 고치지 않는다.
+2. **초안 추출**: DESIGN.md · 보관 PLAN의 "확정 결정"·DECISIONS 답 · ADR에서
+   기능·인수 조건 후보(`### F#`)와 규칙 후보(`R#` — 옮긴 rules.md에 없는 것)를
+   뽑는다. 항목마다 출처(`파일:줄`)를 단다. 이 단계에서는 파일에 쓰지 않는다.
+3. **일괄 질문 [엄격]**: 2의 후보 **전부**를 표 하나로 사용자에게 보여 확정받는다
+   (`| # | 종류 F/R | 항목 | 후보 | 출처 |`). 특히 출처를 확인할 수 없는 항목,
+   출처끼리 모순되는 항목(예: 같은 규칙의 버전 3개), "기준: 현재 구현"·"코드가
+   정본" 문서에서만 나온 항목은 표에 표시한다. 답이 없는 항목은 spec에 넣지 않고
+   보고에 남긴다 — 추측 금지 (journal backfill과 같은 방식).
+4. **저장**: 확정된 F는 `docs/spec/product.md`(신규)에, 확정된 R은
+   `docs/spec/rules.md`에 **append만** 한다(옮긴 기존 행은 수정하지 않는다).
+   확정 F가 0건이어도 `docs/spec/product.md`를 골격(`# 기능 명세` + "F 항목 없음 —
+   brainstorming 필요" 1줄)으로 만든다 — `docs/spec/`이 생겨야 재실행 시 이 단계가
+   건너뛰어진다(멱등). `docs/journal.md`가 없으면 먼저 1의 "journal 골격"과 같은
+   골격을 만든 뒤, 확정 내용을 결정 저널에 기록한다 (사용자가 고른 값 =
+   `[내 판단]`).
+기존 DESIGN.md는 삭제하지 않는다 — spec 확정 후 정리 여부는 사용자가 정한다.
 
 ## 1. mode 판정·기입
 
@@ -26,19 +60,20 @@ PLAN.md 헤더에 `ui:` 라인이 없으면 **사용자에게 값을 객관식�
 PDF 등 조작 없는 산출물, none=CLI·라이브러리·배치). none이면 사용자가
 말한 근거 1줄을 병기한다. "판정과 기입은 자동" 원칙의 유일한 예외다 —
 화면 산출물 유무는 코드에서 확정 판정이 안 되고, 모델의 none 오판이
-실측 사례라서 추정하지 않는다. interactive·static인데 `docs/screens.md`가
+실측 사례라서 추정하지 않는다. interactive·static인데 `docs/spec/screens.md`(`--no-spec`이면
+v1.15 경로 `docs/screens.md`도 같은 것으로 본다)가
 없으면 수정하지 않고 4의 보고 대상에 "screens.md 부재 — brainstorming
 화면 설계 필요"로 올린다. 이미 `ui:` 라인이 있으면 그대로 둔다.
 
 ### rules 필드 — 기본값 추정 금지 [엄격]
 PLAN.md 헤더에 `rules:` 라인이 없으면 **사용자에게 객관식으로 확인한 뒤**
-추가한다: `rules: docs/rules.md | none (근거)` (write-plan "rules·design
+추가한다: `rules: docs/spec/rules.md | none (근거)` (write-plan "rules·design
 필드" 기준 — 계산·판정·분류·수치 기준·상태 전이 규칙이 있으면 대상).
-ui 필드와 같은 이유로 추정하지 않는다. 대상인데 `docs/rules.md`가 없으면
+ui 필드와 같은 이유로 추정하지 않는다. 대상인데 `docs/spec/rules.md`가 없으면
 **골격만** 만든다 — `# 업무 규칙`, `## 용어집`(빈 표), `## 규칙`(R1 템플릿:
 원칙 1줄 + 예시 표 머리행) — 규칙 내용·예시는 쓰지 않는다 (추측 금지).
 그리고 4의 보고에 "rules.md 예시 미작성 — brainstorming 업무 규칙 정의
-필요"를 올린다. 이미 `rules:` 라인이 있으면 그대로 둔다.
+필요"를 올린다. (`--no-spec`이면 골격 경로는 v1.15 `docs/rules.md`.) 이미 `rules:` 라인이 있으면 그대로 둔다.
 
 ### design 필드 — 기본값 추정 금지 [엄격]
 `ui: interactive|static`인데 헤더에 `design:` 라인이 없으면 사용자에게
@@ -83,6 +118,13 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
 
 ## 4. 위험 항목 보고 [엄격]
 
+(0단계 관련 — 수정 없이 보고만)
+- `docs/spec/`에 "기준: 현재 구현"·"코드가 정본" 문구가 있음 (구현을 받아 적은
+  명세 — 사용자가 의도된 동작으로 다시 쓸지 정한다)
+- 0-3에서 답을 받지 못해 spec에 넣지 않은 후보 목록 (출처 포함)
+- product.md가 골격뿐임 — v1.16 활성 상태에서 동작 변경 태스크는 "spec 먼저"로
+  정지하므로 brainstorming으로 F 작성이 먼저다
+
 다음은 **수정하지 않고** 목록으로 보고한다:
 - 부수효과 있는 verify: DB 변경·파일 삭제·네트워크 쓰기
 - 개발·공유 DB를 물고 있는 테스트 설정
@@ -90,9 +132,9 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
   verify (write-plan 계약 스테이지의 cross-role verify 의존 금지 위반 —
   [P] 불성립·순차 강등의 1순위 원인). 보고에 분리안("mock 대상 verify +
   통합 stage 태스크")을 함께 제시한다.
-- `ui: interactive|static`인데 `docs/screens.md`가 없는 계획 (1의 ui 필드
+- `ui: interactive|static`인데 `docs/spec/screens.md`가 없는 계획 (1의 ui 필드
   확인에서 발견 — 화면 설계를 건너뛴 상태)
-- `rules: docs/rules.md`인데 예시가 빈 규칙이 있는 계획 (골격만 만든 경우
+- `rules: docs/spec/rules.md`인데 예시가 빈 규칙이 있는 계획 (골격만 만든 경우
   포함 — 규칙이 걸린 미완료 태스크는 hold 대상)
 - 디자인 확인 미완 (`ui: interactive|static` + design 사용자 답 ③)
 
@@ -103,10 +145,12 @@ PLAN.md의 **미완료 태스크**의 verify를 전수 점검한다:
 ## 5. 자기 검사·커밋
 
 - 커밋 전에 수정 파일 목록을 검사한다: **PLAN.md·프로젝트 CLAUDE.md·
-  package.json(scripts만)·docs/rules.md(신규 골격만)·docs/journal.md 5개를
-  벗어나면 커밋 없이 중단·보고한다 [엄격]** (package.json은 scripts 외 필드
-  변경도 위반이다. rules.md는 **없던 파일의 골격 생성만** 허용 — 기존
-  rules.md 수정은 위반이다. journal.md는 골격 생성과 1의 사용자 확인 항목
+  package.json(scripts만)·docs/spec/*(0의 이동·신규 생성·사용자 확정 행 append만)·
+  v1.15 경로 `docs/rules.md`·`docs/screens.md`(0의 이동에 따른 원본 삭제, 또는
+  `--no-spec`일 때 `docs/rules.md` 신규 골격만)·
+  docs/journal.md를 벗어나면 커밋 없이 중단·보고한다 [엄격]** (package.json은 scripts 외 필드
+  변경도 위반이다. rules.md는 **없던 파일의 골격 생성**과 0-4의 사용자 확정
+  행 append만 허용 — 그 밖의 기존 rules.md 수정은 위반이다. journal.md는 골격 생성과 0-4·1의 사용자 확인 항목
   append만 허용).
 - 정상이면 `[dev-kit-migrate] v<dev-kit 버전> 규격 반영` **단일 커밋**을
   만들고, 변경 요약·판정 근거·보고 항목(hold 목록)을 출력한다.

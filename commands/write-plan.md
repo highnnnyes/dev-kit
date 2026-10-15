@@ -8,11 +8,15 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
 
 ## 분해 원칙
 1. 먼저 관련 코드를 실제로 읽어라. 코드를 안 본 계획은 금지 (파일 경로·기존 패턴 확인).
-   `docs/screens.md`가 있으면 입력으로 함께 읽는다 (brainstorming이 확정한
+   `docs/spec/screens.md`가 있으면 입력으로 함께 읽는다 (brainstorming이 확정한
    화면 스펙 — UI 태스크의 verify 기준이 된다). DESIGN.md의 화면 설계 대상
    판정(ui: interactive|static|none)도 읽어 아래 "ui 필드"로 옮긴다.
-   `docs/rules.md`(업무 규칙·예시)와 DESIGN.md의 `rules:`·`design:` 줄도
-   읽어 아래 "rules·design 필드"로 옮긴다.
+   `docs/spec/rules.md`(업무 규칙·예시)·`docs/spec/product.md`(기능 인수 조건)와
+   DESIGN.md의 `rules:`·`design:` 줄도 읽어 아래 "rules·design 필드"로 옮긴다.
+   v1.15 경로 `docs/rules.md`·`docs/screens.md`만 있는 프로젝트(migrate 전)는 그
+   파일을 같은 것으로 읽고 인용도 그 경로로 쓴다 (execute-plan "spec 참조" 호환).
+   동작 변경 태스크의 F/R/S 인용 필수 규칙은 `docs/spec/`이 있을 때만 적용한다
+   (execute-plan 활성 조건).
 2. **단계(stage)**: 독립적으로 검증 가능한 기능 단위. 각 단계는 완료 조건을 가진다.
 3. **태스크(task)**: 한 단계를 **verify 하나로 통과/실패가 갈리는 단위 —
    신규/확장 테스트 1~2개 + 그 구현**으로 쪼갠 것 (대략 5~10분).
@@ -45,19 +49,32 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
      목록 밖의 비-셸 verify는 실행 시 게이트 정지 대상이므로 작성하지 마라.
      목록 추가는 헌법 개정으로만 가능하다.)
      **[엄격] role=frontend 태스크의 verify에는 대상 화면을
-     `docs/screens.md#화면명 기준` 형태로 명시한다** (v1.13.1의 [P] verify
+     `docs/spec/screens.md#화면명 기준` 형태로 명시한다** (v1.13.1의 [P] verify
      경로 명시와 같은 패턴 — 누락이 grep으로 드러난다). `ui: static`이면
      페이지/섹션을 생성하는 태스크에 role과 무관하게 같은 규칙을 적용한다
-     (`docs/screens.md#섹션명 기준`). `docs/screens.md`가
+     (`docs/spec/screens.md#섹션명 기준`). `docs/spec/screens.md`가
      없는 UI 태스크는 태스크로 만들지 말고 DECISIONS로 올려 계획 실행 전에
      멈춰라 — 화면 스펙 없는 UI 구현은 builder 즉흥이 된다.
+   - **[엄격] 동작을 바꾸는 태스크는 spec ID를 인용한다 (v1.16 명세 먼저)**:
+     기능은 `docs/spec/product.md#F3 기준`, 규칙은 아래 rules 규칙, 화면은
+     `docs/spec/screens.md#S3 기준`. 인용할 F/R/S가 spec에 없는 동작 변경은
+     태스크로 만들지 말고 **"spec 먼저"**로 멈춘다 — spec 수정안을 만들어
+     사용자 확인을 받은 뒤(execute-plan "spec 참조와 명세 먼저"와 같은 절차)
+     계획한다. 기능 태스크도 그 F의 예시 ID(`F3-예1`…)를 테스트 케이스 ID로
+     쓴다. 동작이 바뀌지 않는 태스크(리팩터·성능·문서·인프라)는 인용 대상이
+     아니다.
+   - **[엄격] PLAN에 규칙·동작을 적지 않는다**: DECISIONS 답·"확정 결정"·
+     태스크 설명에 규칙·동작 내용을 직접 쓰지 않는다 — 답은 spec에 ID로
+     반영하고 PLAN은 `→ R3-예2 갱신`·`→ F4 추가`처럼 ID(예시 ID까지)만 인용한다. 근거: 규칙이 PLAN 줄에만
+     적혀 다음 PLAN에서 재정의된 실측 (dev-kit 리포 docs/diagnosis-2026-10.md
+     §7-8-1 — 기준일 규칙 3개 PLAN 연속 재정의).
    - **[엄격] 업무 규칙이 걸린 태스크의 verify에는 대상 규칙을
-     `docs/rules.md#R3 기준` 형태로 명시하고, 그 규칙의 예시 ID(`R3-예1`,
+     `docs/spec/rules.md#R3 기준` 형태로 명시하고, 그 규칙의 예시 ID(`R3-예1`,
      `R3-예2`…)를 이 태스크의 테스트 케이스로 지정한다** — 테스트 이름이나
      파라미터 ID에 예시 ID를 남긴다 (예시 행이 곧 테스트다 — 테스트를 구현에서
      도출하지 않고 스펙에서 도출하게 하는 장치. 실측: 진단 S10 — 구현 임계값에
      맞춘 테스트에서 뮤턴트 대량 생존). 규칙이 걸린 태스크는 tier=standard다.
-     `docs/rules.md`에 없는 규칙이나 예시가 없는 규칙이 필요하면 태스크로
+     `docs/spec/rules.md`에 없는 규칙이나 예시가 없는 규칙이 필요하면 태스크로
      만들지 말고 DECISIONS로 올려 계획 실행 전에 멈춰라 (screens.md 규칙과
      같은 패턴).
    - **[엄격] 외부 데이터를 파싱하는 태스크** (외부 API 응답·크롤링 HTML·
@@ -111,7 +128,7 @@ description: 설계/기능 요청을 PLAN.md로 분해한다 — 단계(stage) �
    `- [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · risk: normal · verify: 문서-코드 drift 스캔 통과`
    구조 변경이 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉이다.
    **화면 추가·흐름 변경이 포함된 stage**도 동일 패턴으로 말미에 추가한다:
-   `- [ ] N.x docs/screens.md 갱신 · role: docs · tier: standard · risk: normal · verify: 문서-코드 drift 스캔 통과`
+   `- [ ] N.x docs/spec/screens.md 갱신 · role: docs · tier: standard · risk: normal · verify: 문서-코드 drift 스캔 통과`
    화면 변경이 없는 stage에는 넣지 않는다.
 7. **하드닝 태스크**: 프로젝트에 DB·볼륨·외부 상태가 있는데 루트에
    `HARDENING.md`가 없으면 **Stage 1에 harden 태스크를 넣는다** (harden 스킬 기준):
@@ -178,7 +195,7 @@ DESIGN.md의 화면 설계 대상 판정(brainstorming — "사람이 보는 화
   애매하면 **사용자에게 묻는다** — 모델이 none으로 좁히지 않는다 [엄격]
   ("웹 UI 없음 = 화면 없음"으로 HTML 리포트 프로젝트가 screens.md 없이
   진행된 실측 오판이 근거).
-- interactive·static이면 `docs/screens.md` 존재가 전제다 — 없으면 태스크를
+- interactive·static이면 `docs/spec/screens.md` 존재가 전제다 — 없으면 태스크를
   만들지 말고 DECISIONS로 올려 멈춘다 (위 3의 기존 규칙과 동일).
 - none이면 근거 1줄을 병기한다: `ui: none (근거: CLI 도구 — 화면 산출물 없음)`.
 - 근거: 이 필드가 있어야 "화면 설계를 건너뛰었다"가 헤더 빈칸·none으로
@@ -188,11 +205,11 @@ DESIGN.md의 화면 설계 대상 판정(brainstorming — "사람이 보는 화
 
 ## rules·design 필드 [엄격] — 규칙 정의·디자인 확인을 건너뛰었는지 드러나게
 PLAN.md 헤더에 두 줄을 `ui:` 아래에 기록한다:
-- `rules: docs/rules.md | none (근거)` — DESIGN.md의 업무 규칙 대상 판정
+- `rules: docs/spec/rules.md | none (근거)` — DESIGN.md의 업무 규칙 대상 판정
   (brainstorming)에서 가져온다. 계산·판정·분류·수치 기준·상태 전이 규칙이
   있으면 대상. DESIGN.md에 판정이 없으면 같은 기준으로 판정하되 애매하면
   사용자에게 묻는다 — 모델이 none으로 좁히지 않는다 (ui 필드와 같은 규칙).
-  대상인데 `docs/rules.md`가 없거나 예시 칸이 빈 규칙이 있으면 태스크를
+  대상인데 `docs/spec/rules.md`가 없거나 예시 칸이 빈 규칙이 있으면 태스크를
   만들지 말고 DECISIONS로 올려 멈춘다.
 - `design: docs/design/ (대조 완료 날짜) | skip (사용자 사유) | n/a (ui: none)` —
   DESIGN.md의 디자인 확인 결과에서 가져온다. `ui: interactive|static`인데
@@ -272,8 +289,8 @@ PLAN.md 헤더에 두 줄을 `ui:` 아래에 기록한다:
 # PLAN: [기능/프로젝트명]
 작성: [날짜] · 상태: IN PROGRESS
 mode: A (근거: 태스크 11개, role 3종, 파일 겹침 없음)
-ui: interactive (docs/screens.md)
-rules: docs/rules.md
+ui: interactive (docs/spec/screens.md)
+rules: docs/spec/rules.md
 design: docs/design/ (대조 완료 2026-10-14)
 
 ## DECISIONS (사용자 결정 필요 — 비어있으면 생략)
@@ -288,7 +305,7 @@ design: docs/design/ (대조 완료 2026-10-14)
 - [ ] 0.2 [계약 소스에서 mock 서버·응답 픽스처 파생 생성] · 파일: `mocks/...` (신규) · role: test · tier: standard · risk: normal · verify: `npm run test -- contracts/...` (0.1 계약 테스트를 mock 대상으로 확장 실행 — red→green)
 
 ## Stage 1: [단계명] — 완료 조건: [검증 가능한 조건]
-- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: `npm run test -- path/to/file.test.ts` (신규 테스트 1~2개 red→green · `docs/rules.md#R3 기준` — 케이스 R3-예1·R3-예2)
+- [ ] 1.1 [기능 단위 목표 + 테스트 1~2개] · 파일: `path/to/file` · role: backend · tier: standard · risk: high · verify: `npm run test -- path/to/file.test.ts` (신규 테스트 1~2개 red→green · `docs/spec/rules.md#R3 기준` — 케이스 R3-예1·R3-예2)
 - [ ] 1.2 [P1] [목표] · 파일: `...` (신규) · role: frontend · tier: standard · risk: normal · verify: `npm run test -- ...` (`mocks/...` 대상 — 신규 테스트 red→green)
 - [ ] 1.3 [P1] [목표] · 파일: `...` (신규) · role: test · tier: light · risk: normal · verify: [방법]
 - [ ] 1.4 [stage-reviewer 보완 태스크] · 파일: `...` · role: backend · tier: standard · risk: normal · verify: `...` · 보완: stage-review   ← execute-plan이 붙이는 표시 (`hold:`는 migrate가 붙인다)
@@ -306,7 +323,8 @@ design: docs/design/ (대조 완료 2026-10-14)
   "결정 저널" 형식·출처 태그 3종). DECISIONS 답은 ADR에도 기록한다.
 - **하류 정정 기록 [엄격] (지표 ④-b)**: 새 PLAN을 작성할 때, 직전 PLAN이
   완료된 뒤 사용자가 실사용·확인 중 지적한 내용은 이번 PLAN의 **DECISIONS 항목
-  (D-ID)으로 기록**하고(답이 이미 정해졌으면 `- [x] D5: … (정정)`) 줄 끝에
+  (D-ID)으로 기록**하고(답이 이미 정해졌으면 `- [x] D5: 계약 메뉴 복구 → S4 갱신
+  (정정)`처럼 요지 + spec ID만 — 동작 내용은 spec에) 줄 끝에
   `(정정)`을 붙인다 — 별도 "확정 결정" 줄로 적지 않는다(ID가 있어야 센다). 그리고 PROGRESS.md의
   **직전 PLAN 완료 블록**에 `- 정정: N (D2, D5 …)` 줄을 덧붙인다 (해당 없으면
   `- 정정: 0`). 판단 기준: 사용자가 **완료된 결과물을 써 보거나 확인한 뒤** 낸

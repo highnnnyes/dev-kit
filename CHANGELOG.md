@@ -3,6 +3,48 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.16.0 — 2026-10-15
+명세 먼저 — 살아있는 명세 `docs/spec/`. 설계·근거·적용 순서는 dev-kit 리포
+docs/v1.16-design.md. 근거: esi-flow 진단(§7) — 규칙이 PLAN "확정 결정" 줄에만
+적혀 3개 PLAN에서 재정의, 화면 명세가 "기준: 현재 구현"으로 사후 작성, 명세 변경
+없는 메뉴 제거·복구. 사용자 결정(spec-kit 방식 적용, 2026-10-15).
+
+- **`docs/spec/`** [엄격]: product.md(기능 F#, 인수 조건 `예시 | 입력 | 기대` 표 —
+  2개 이상, 1개 실패·경계, 예시 없으면 저장 금지) · rules.md(R#) · screens.md(S#).
+  프로젝트 전체 기준, 기존 spec은 diff로 수정. DESIGN.md는 변경 1건의 "어떻게"
+  (인용 spec ID + spec diff 요약). ID는 하이픈 없이 `F3`/`R3`/`S3`(v1.15와 같은
+  형식 — 계약·ID 변환 없음), 재사용 금지. 경로 `docs/rules.md`·`docs/screens.md`는
+  `docs/spec/`으로 이동 — 소비 파일은 v1.15 경로도 같은 참조로 받는다.
+- **명세 먼저** [엄격]: 동작을 바꾸는 DECISIONS 답·(j) 답·사용자 정정은 spec 수정안
+  → 사용자 확인(여러 건은 diff 하나로) → `[spec]` 커밋(docs/spec·journal·PLAN 한정)
+  → 재개. write-plan은 동작 변경 태스크에 F/R/S 인용 필수(없으면 "spec 먼저"로
+  정지), PLAN에 규칙·동작 기록 금지(ID만). builder는 spec 밖 동작을 만들지 않고
+  BLOCKED. 헌법 §4 요약.
+- **역방향 drift 차단** [엄격]: stage-reviewer (f) — 테스트 기대값 변경은 spec 예시와
+  다르면 BLOCKING · 같아지면 버그 수정으로 통과 · 예시 없으면 BLOCKING, 사용자 관측
+  요소(라우트·메뉴·화면 요소·API 응답 필드) 추가·삭제에 F/S 변경이 없으면 BLOCKING,
+  그 밖은 WARNING("확신 낮은 지적" 원칙의 예외). reviewer에 "spec 미인용 동작 변경"·
+  "테스트 기대값 변경" 규칙. "기준: 현재 구현"·"코드가 정본" 명세 금지.
+- **migrate**: spec 초안 추출 — v1.15 경로 이동(경로 문자열만), product.md 초안
+  (출처 `파일:줄`), 출처 불명·모순·"현재 구현" 출처 항목은 일괄 질문(답 없으면 미포함).
+  수정 허용 파일에 `docs/spec/*`(이동·신규·사용자 확정 행 append)와 이동에 따른
+  v1.15 경로 원본 삭제. `--no-spec` 옵션 — 0단계를 건너뛰어 v1.16을 켜지 않는다
+  (v1.15 측정 중인 프로젝트용).
+- **metrics** "트랙별 대기 시간"(mode A/B — 그룹별 최대 대기·불균형, 기존 기록만).
+- 리뷰 입력 ⑥을 규칙·기능 발췌(R·F)로 일반화, `- 대상:` 키에 F 추가.
+- 기록만: Agent Teams식 에이전트 간 대화 미채택, 공유 큐 동적 배분은 대기 시간
+  실측 후 검토.
+- audit C에 v1.16 계약 3종.
+- **활성 조건** [엄격]: v1.16 규칙(명세 먼저·역방향 drift·spec 미인용 동작 변경)은
+  프로젝트에 `docs/spec/`이 있을 때만 켠다 — 오케스트레이터가 reviewer ③에
+  `· spec: active`, stage-reviewer ②에 `spec: active`를 붙인다. spec이 없는 프로젝트는
+  plugin을 업데이트해도 v1.15 동작 그대로다.
+- 적용 순서: myroquant는 v1.15 측정 기간 동안 미적용 — migrate는 `--no-spec`으로
+  실행한다(그냥 migrate하면 0단계가 `docs/spec/`을 만들어 v1.16이 켜진다), esi-flow 먼저(④-b·⑤ 판정, v1.15+v1.16 합산 효과임을
+  명시).
+- migrate 단계 0(spec 정리)을 맨 앞에 둔다 — 옛 경로 이동(헤더·verify 경로 문자열
+  포함), 초안 후보 전부 일괄 확인, 확정분만 append.
+
 ## v1.15.2 — 2026-10-15
 v1.15 효과 판정 지표 ④ 사전 등록 보강(dev-kit 리포 docs/v1.15-design.md §5).
 아직 after 데이터가 없는 시점의 보강이다. 근거: esi-flow 진단 §7-8 — 재시도율이

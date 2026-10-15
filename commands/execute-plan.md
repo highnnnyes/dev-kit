@@ -18,8 +18,12 @@ description: PLAN.md를 읽고 태스크 루프를 실행한다 — builder 구�
    결정을 받으면 실행 시작 전에 `docs/decisions/NNN-제목.md`에 ADR로 기록하고
    (맥락/결정/근거/기각한 대안/출처 태그 — 10줄 이내, docs 스킬 형식),
    같은 결정을 `docs/journal.md`에 항목으로 남긴다 (아래 "결정 저널 게이트").
-   결정이 업무 규칙이면 `docs/rules.md`에 예시 행으로도 반영하고, DECISIONS 답
-   줄 끝에 `→ R3-예N`을 붙인다 (PLAN 완료 블록 상류개입 b의 계수 표시).
+   결정이 동작(규칙·기능·화면)을 바꾸면 아래 "spec 참조와 명세 먼저" 절차(spec
+   수정안 → 확인 → `[spec]` 커밋)로 spec에 반영하고, DECISIONS 답 줄 끝에
+   `→ R3-예2 갱신`·`→ F4 추가` 같은 spec ID 표시를 붙인다 (PLAN 완료 블록 상류개입
+   b의 계수 표시). spec이 없는 프로젝트(활성 조건 미충족)는 v1.15대로 **v1.15 경로
+   `docs/rules.md`에만** 예시 행으로 반영한다 — `docs/spec/`에 쓰면 그 순간 활성
+   조건이 켜진다.
    결정의 맥락이 채팅에서 증발하는 것을 막는다.
 2. $ARGUMENTS로 특정 stage/task가 지정되면 그것만, 아니면 첫 미완료 태스크부터.
    재개 시 PROGRESS.md 최상단의 `## RESUME` 블록이 있으면 그것부터 읽는다 —
@@ -55,6 +59,39 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
 마지막으로 미루고, 수정 후에는 stage를 끝내고 새 세션을 권고한다
 (RESUME 블록 갱신 포함 — stage 경계 처리의 세션 재시작 권고와 동일 절차).
 
+## spec 참조와 명세 먼저 [엄격] (v1.16)
+**활성 조건 [엄격]**: 이 절과 reviewer·stage-reviewer의 v1.16 규칙(spec 미인용
+동작 변경, 테스트 기대값 3분기, 역방향 drift)은 **프로젝트에 `docs/spec/`
+디렉토리가 있을 때만** 켠다. 오케스트레이터는 루프 시작 시 1회 확인하고, 켜졌으면
+builder 브리핑과 reviewer 브리핑 ③ verify 결과 줄 끝에 `· spec: active`를,
+stage-reviewer 브리핑 ②에 `spec: active` 1줄을 붙인다(없으면 붙이지 않는다 — 세
+에이전트는 이 표시가 있을 때만 v1.16 규칙을 적용). `/dev-kit:migrate`가 0단계에서
+`docs/spec/`을 만들면 켜진다(`--no-spec`이면 안 켜진다). 근거: spec이 없는 프로젝트(v1.15 측정 중인 myroquant
+포함)에서 기대값 변경마다 BLOCKING이 나 측정이 교란되는 것을 막는다.
+
+**spec 참조** = 태스크 verify의 `docs/spec/product.md#F3`·`docs/spec/rules.md#R3`·
+`docs/spec/screens.md#S3`(또는 `#화면명`) 인용. v1.15 경로 `docs/rules.md#…`·
+`docs/screens.md#…`도 같은 참조로 받는다 (migrate 전 프로젝트 호환 — ID는 같다).
+ID는 하이픈 없는 `F3`/`R3`/`S3`, 예시는 `F3-예1`·`R3-예2`다.
+
+**명세 먼저**: DECISIONS 답, 중단 조건 (j) 스펙 공백 답, 실행 중 사용자 정정·
+방향 전환이 **동작**을 바꾸면 다음 순서로만 진행한다.
+1. 오케스트레이터가 **spec 수정안(diff)**을 만든다 — 바뀌는 F/R/S 항목과 예시
+   행. 같은 시점의 정정 여러 건은 diff 하나로 묶는다.
+2. 사용자에게 diff를 보여 확인받는다 (결정 저널 게이트로 기록).
+3. `[spec] [ID 목록] 갱신` 별도 커밋 — 파일은 `docs/spec/*`·`docs/journal.md`·
+   PLAN.md로 한정한다 [엄격] (코드 diff와 섞지 않는다).
+4. 바뀐 spec ID를 인용하는 태스크로 PLAN을 고치고 재개한다.
+PLAN의 DECISIONS 답 줄에는 규칙·동작 내용을 적지 않는다 — `→ R3-예2 갱신`·
+`→ F4 추가`처럼 spec ID(예시 ID까지)만 남긴다 (PLAN 완료 블록 상류개입 b가 이
+`→ R…`·`→ F…` 표시를 센다) (규칙이 PLAN에만 적혀 다음 PLAN에서 재정의되는 실측 —
+dev-kit 리포 docs/diagnosis-2026-10.md §7-8-1, 기준일 규칙 3회 재정의).
+예외 (spec 수정안 불필요): ① 동작이 바뀌지 않는 수정(리팩터·성능·오타 —
+테스트 기대값이 하나도 안 바뀌는 것), ② 바뀐 기대값이 spec 예시와 **같아지는**
+수정(spec에 맞추는 버그 수정).
+**정규 키**: 화면은 S ID가 있으면 `S3`, 없으면(v1.15 screens.md) `screens#화면명`.
+같은 화면에 두 키를 섞지 않는다 — S ID가 붙은 뒤에는 `S3`만 쓴다.
+
 ## 결정 저널 게이트 [엄격]
 다음 사건이 일어나면 오케스트레이터가 `docs/journal.md`에 항목을 남기고,
 **남긴 뒤에만** 다음 디스패치로 간다 (docs 스킬 "결정 저널" 형식 — 출처 태그
@@ -82,16 +119,18 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
    `## [날짜시각] Stage N 시작 — base=<현재 HEAD sha>` 한 줄을 append한다 —
    stage-reviewer의 통합 diff 스코프가 이 sha를 사용한다.
 
-0b. **대상 반복 확인 [엄격]**: 태스크 verify가 `docs/rules.md#`·
-   `docs/screens.md#`를 가리키면 아래 "대상 반복 정지"의 계수를 확인한다.
+0b. **대상 반복 확인 [엄격]**: 태스크 verify가 spec 참조(`docs/spec/product.md#`·
+   `docs/spec/rules.md#`·`docs/spec/screens.md#` 또는 v1.15 경로)를 가리키면 아래
+   "대상 반복 정지"의 계수를 확인한다.
    해당 대상 키의 사건이 이미 3회면 디스패치하지 않고 중단 조건 (j)로 간다.
 
 1. **브리핑 작성**: builder가 신선한 컨텍스트에서 시작해도 바로 착수할 수 있게
    자족적인 브리핑을 만든다 — 태스크 목표, 파일 경로, verify 방법,
    이전 태스크의 NOTES에서 넘어온 제약. 프로젝트 전체 맥락을 쏟아붓지 마라.
    그 태스크에 필요한 것만.
-   - **규칙 발췌 [엄격]**: 태스크 verify가 `docs/rules.md#R…`을 가리키면 해당
-     규칙 섹션(원칙 + 예시 표)을 **원문 그대로 발췌**해 브리핑에 넣는다 —
+   - **spec 발췌 [엄격]**: 태스크 verify가 `docs/spec/rules.md#R…` 또는
+     `docs/spec/product.md#F…`를 가리키면 해당 섹션(원칙·목적 + 예시 표)을
+     **원문 그대로 발췌**해 브리핑에 넣는다 —
      `[red]` 브리핑에는 "테스트 케이스는 이 예시 행에서 도출하고 테스트
      이름·파라미터 ID에 예시 ID를 남겨라"를 명시한다. builder는 rules.md를
      직접 읽지 않는다 (입력 상수 유지 — 리뷰 입력 ⑥과 같은 발췌).
@@ -234,14 +273,14 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      `git diff -- <파일들>`), ③ 오케스트레이터 verify 결과 1줄
      (`verify: PASS (orchestrator-run)`), ④ 프로젝트 CLAUDE.md(자동 상속 —
      별도 주입 불필요). 조건부 예외 둘:
-     ⑤ 태스크 verify가 `docs/screens.md`를 가리키면 **해당 화면 섹션 발췌** —
+     ⑤ 태스크 verify가 `docs/spec/screens.md`를 가리키면 **해당 화면 섹션 발췌** —
      reviewer의 화면 추적표 행(주요 액션·결과 피드백·상태 3종)의 기준이 이
      발췌다. PLAN 헤더 `design:`이 `docs/design/`이면 발췌 끝에 그 화면의
      디자인 파일 경로 1줄을 덧붙인다 (reviewer가 화면 기준으로 Read한다).
-     ⑥ 태스크 verify가 `docs/rules.md#R…`을 가리키면 **해당 규칙 섹션 발췌**
-     (원칙 + 예시 표) — reviewer의 규칙 예시 행(예시 1개 = 추적표 1행)의
-     기준이 이 발췌다.
-     reviewer가 screens.md·rules.md 파일을 직접 읽는 것은 여전히 금지다
+     ⑥ 태스크 verify가 `docs/spec/rules.md#R…`·`docs/spec/product.md#F…`를
+     가리키면 **해당 규칙·기능 섹션 발췌**(원칙·목적 + 예시 표) — reviewer의
+     예시 행(예시 1개 = 추적표 1행)의 기준이 이 발췌다.
+     reviewer가 spec 파일(product·rules·screens)을 직접 읽는 것은 여전히 금지다
      (stage-reviewer의 발췌 패턴과 동일 — 입력을 상수로 유지).
      재작업 라운드면 직전 라운드 BLOCKING 목록(ID 포함)과 이번 라운드 builder
      CHANGED 줄 원문(`← B1` 표기 포함)을 첨부한다 — reviewer "재작업 라운드"
@@ -332,8 +371,10 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      - 넘김: [builder NOTES / reviewer NON-BLOCKING]
      - 대상: [R3, screens#결과화면] [· 보완=stage-review|merge-fail|user-fix]
      ```
-     `- 대상:` 줄은 태스크 verify의 `docs/rules.md#R…`·`docs/screens.md#…`
-     참조를 **기계적으로** 옮긴다 (판단 없음 — 참조가 없으면 줄 생략).
+     `- 대상:` 줄은 태스크 verify의 `docs/spec/rules.md#R…`·`docs/spec/screens.md#…`
+     참조와 `docs/spec/product.md#F…` 참조를 **기계적으로** 옮긴다 (판단 없음 —
+     참조가 없으면 줄 생략). 변환은 고정이다: `#F3`→`F3`, `#R3`→`R3`, `#S3`→`S3`,
+     S ID 없는 `#화면명`→`screens#화면명`. 키 예: `F3, R3, S3`.
      태스크 줄에 `보완:` 표시가 있으면(아래 "대상 반복 정지") 그 값을 병기한다.
      이 줄이 중단 조건 (j)의 계수 키다.
      FAIL이 한 번이라도 있었던 태스크는 `- FAIL사유:` 줄을 반드시 포함한다
@@ -397,7 +438,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
      ① stage 시작 커밋 sha(PROGRESS.md의 `Stage N 시작 — base=` 라인에서
      읽어 명시 — 통합 diff `<sha>..HEAD`의 기준점), ② PLAN.md에서 발췌한
      해당 stage 완료 조건 + 헤더 `ui:`·`rules:`·`design:` 라인 3줄
-     (stage-reviewer (d)의 화면·규칙 검사 기준), ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
+     (stage-reviewer (d)의 화면·규칙 검사 기준) + 활성 조건 충족 시 `spec: active`
+     1줄 (stage-reviewer (f)의 활성 조건), ③ PROGRESS.md에서 발췌한 **해당 stage 섹션만**,
      ④ 누적 NON-BLOCKING 목록. **PLAN.md·PROGRESS.md 전체 파일 주입 금지** —
      stage-reviewer가 두 파일을 직접 읽게 하지도 않는다.
    - **모델 선택**: 기본은 Task 호출 시 `model: opus`를 **명시**한다
@@ -407,6 +449,10 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
        되돌리기 어려운 변경을 포함
      - PLAN.md의 DECISIONS 항목이 그 stage에서 구현됨
    - PASS → stage 완료 처리 후 다음 stage로 진행.
+   - FAIL이 (f) 역방향 drift(spec 없는 동작 변경)면 보완 태스크를 builder로 바로
+     돌리지 않는다 — 먼저 "spec 참조와 명세 먼저" 절차로 사용자에게 **spec 수정안
+     (예시 추가) vs 코드 되돌리기**를 묻고, 답에 따라 `[spec]` 커밋 또는 되돌리기
+     태스크를 만든다.
    - FAIL → PROPOSED TASKS를 PLAN.md에 보완 태스크로 추가하고(태스크 줄 끝에
      `· 보완: stage-review` — 대상 반복 계수용) 정상 루프
      (builder→reviewer)로 처리한 뒤 stage-reviewer를 1회만 재호출한다.
@@ -472,7 +518,8 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
 분포") — 같은 규칙·화면의 재정의·재작업은 3회째에 몰렸고 현행 버전에서도
 같았다. 기존 3회 FAIL 정지는 태스크 하나 안에서만 세서 이 반복을 못 잡는다.
 
-- **대상 키**: PROGRESS `- 대상:` 줄의 값 (`R3`, `screens#결과화면`).
+- **대상 키**: PROGRESS `- 대상:` 줄의 값 (`F3`, `R3`, `S3` — S ID가 없는 v1.15
+  화면은 `screens#결과화면`).
 - **사건** (키마다, PROGRESS.md + PROGRESS.archive.md 합산 — grep으로 센다):
   ① 그 키를 가진 태스크 블록 중 `FAIL후PASS` 또는 `[verify 미통과]`
   `BLOCKED` 1블록 = 1사건 — FAIL사유 유형이 기능 결함·verify 미충족·
@@ -485,15 +532,12 @@ execute-plan 루프가 도는 동안 dev 루트 헌법과 프로젝트 CLAUDE.md
   남은 태스크·보완 태스크의 디스패치를 멈춘다 (다른 키의 태스크는 계속
   진행 가능 — 의존이 없을 때만). 중단 조건 (j).
 - **스펙 공백 질문**: 패치를 계속하지 않고 PLAN.md DECISIONS에 올린다:
-  `- [ ] D[n]: 스펙 공백 — 대상 [키] · 사건 3회 [각 1줄 요약] · 비어 있는 곳: [rules.md R# 예시 부족 | screens.md 상태·액션 누락 | 규칙 자체 부재] · 추가할 예시/상태 초안: [표]`
-  사용자가 답하면 결정 저널 게이트로 기록하고, **rules.md·screens.md를
-  먼저 갱신한 뒤** 그 새 예시를 테스트 케이스로 하는 태스크로 재개한다.
-  갱신 주체는 오케스트레이터다 — 사용자 답을 그대로 옮기는 것(예시 행·
-  상태 추가, 판단 없음)만 하고, 별도 커밋 `[spec] 대상 [키] 스펙 갱신`으로
-  남긴다. 이 커밋의 파일은 `docs/rules.md`·`docs/screens.md`·
-  `docs/journal.md`·PLAN.md로 한정한다 [엄격] (`[green]` amend가 아니다 —
-  코드 diff와 섞지 않는다).
-  재개 후 같은 키의 사건 계수는 0부터 다시 센다 (재개 시점의 PROGRESS에
+  `- [ ] D[n]: 스펙 공백 — 대상 [키] · 사건 3회 [각 1줄 요약] · 비어 있는 곳: [product.md F# 인수 조건 부족 | rules.md R# 예시 부족 | screens.md 상태·액션 누락 | 항목 자체 부재] · 추가할 예시/상태 초안: [표]`
+  사용자가 답하면 위 "spec 참조와 명세 먼저" 절차(spec 수정안 → 확인 → `[spec]`
+  커밋 — 파일은 `docs/spec/*`·`docs/journal.md`·PLAN.md 한정)로 spec을 **먼저**
+  갱신하고, 그 새 예시를 테스트 케이스로 하는 태스크로 재개한다. spec이 없는
+  프로젝트(활성 조건 미충족)는 v1.15 경로의 rules.md·screens.md를 같은 커밋 규칙으로
+  갱신한다. 재개 후 같은 키의 사건 계수는 0부터 다시 센다 (재개 시점의 PROGRESS에
   `## [시각] 대상 [키] 스펙 갱신 — 계수 리셋` 1줄).
 
 ## mode B 런처 — headless 트랙 병렬 [엄격]
@@ -598,9 +642,10 @@ mode B 트랙 세션은 자기 트랙 PLAN을 끝내도 이 블록을 쓰지 않
   의도된 지표라 판정에 쓰지 않고 보고만 한다). a = 이 PLAN의 입력 DESIGN.md
   `## 질문 커버리지` 표의 케이스 질문 수 합계 — 그 DESIGN.md를 **처음 소비하는
   PLAN에서만** 센다(DESIGN.md가 없거나 표가 없거나 이미 센 DESIGN이면 0 + 사유
-  병기), b = 이 PLAN DECISIONS 답 줄 중 `→ R3-예N` 표시(답이 docs/rules.md 예시
+  병기), b = 이 PLAN DECISIONS 답 줄 중 `→ R3-예2 갱신` 같은 spec ID 표시(답이 docs/spec/rules.md 예시
   행으로 반영됐다는 표시 — DECISIONS 답을 rules.md에 반영할 때 오케스트레이터가
-  붙인다)가 있는 항목 수, c = 중단 조건 (j) 스펙 공백 질문에 대한 답 수. **c에
+  붙인다 — `→ F4 추가` 같은 `→ F…` 표시도 같이 센다)가 있는 항목 수, c = 중단 조건 (j) 스펙 공백
+  질문에 대한 답 수. **c에
   해당하는 항목은 b에서 뺀다** (스펙 공백 답이 rules.md 예시로 반영돼도 한 번만
   센다). 셋 다 기록에서
   기계적으로 센다 (추정 금지 — 셀 수 없으면 `n/a (사유)`).

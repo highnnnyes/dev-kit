@@ -31,10 +31,11 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   execute-plan 5의 오케스트레이터 몫) ↔ 소비처
   (VERIFIED 명령 목록 ↔ PROGRESS.md `- 리뷰명령:` 전재)
 - 리뷰 입력 제한: reviewer 브리핑 4종(태스크 정의·diff·verify 결과 1줄·
-  프로젝트 CLAUDE.md) + 조건부 ⑤(verify가 docs/screens.md를 가리키는
+  프로젝트 CLAUDE.md) + 조건부 ⑤(verify가 docs/spec/screens.md를 가리키는
   태스크 한정 해당 화면 섹션 발췌 — `design:`이 docs/design/이면 디자인
-  파일 경로 1줄 포함) + 조건부 ⑥(verify가 docs/rules.md#R을 가리키는
-  태스크 한정 해당 규칙 섹션 발췌) + 재작업 라운드의 직전 BLOCKING 목록·
+  파일 경로 1줄 포함) + 조건부 ⑥(verify가 docs/spec/rules.md#R·
+  docs/spec/product.md#F를 가리키는 태스크 한정 해당 규칙·기능 섹션 발췌) +
+  ③ 줄의 `· spec: active` 표시(v1.16 활성 조건) + 재작업 라운드의 직전 BLOCKING 목록·
   builder CHANGED 원문 ↔ reviewer.md 입력 규칙 ↔ builder.md 입력(규칙 발췌·BLOCKING 목록),
   stage-reviewer 브리핑 발췌 4종 ↔ stage-reviewer.md 스코프 —
   양쪽 목록이 일치하는가
@@ -47,9 +48,9 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   ↔ migrate(없으면 사용자 확인 후 추가 — 추정 금지) ↔ execute-plan
   stage-reviewer 브리핑 ②(`ui:` 라인 포함) ↔ stage-reviewer (d)의
   none+.html/.pdf WARNING — 값 이름 3종과 규칙이 일치하는가
-- `rules: docs/rules.md|none` 헤더 (v1.15): brainstorming 업무 규칙 정의
+- `rules: docs/spec/rules.md|none` 헤더 (v1.15): brainstorming 업무 규칙 정의
   (대상 판정·none 자동 좁힘 금지·예시 2개 이상 중 1개 경계·예시 없으면 저장
-  금지) ↔ write-plan "rules·design 필드" + 태스크 verify `docs/rules.md#R3
+  금지) ↔ write-plan "rules·design 필드" + 태스크 verify `docs/spec/rules.md#R3
   기준`·예시 ID = 테스트 케이스 ID ↔ execute-plan 브리핑 규칙 발췌·리뷰
   입력 ⑥ ↔ reviewer 예시 1개 = 추적표 1행 ↔ builder `[red]` 예시 도출 ↔
   builder-light 규칙 발췌 시 `[판단 필요]` BLOCKED ↔ stage-reviewer (d)
@@ -76,6 +77,18 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
 - 실샘플 픽스처 (v1.15): write-plan 외부 데이터 파싱 규칙(첫 stage 실응답
   샘플 확보 태스크·`tests/fixtures/real/`·수집 명령 사용자 확인) ↔ reviewer
   "실샘플 픽스처 대상 테스트 존재" 행 — 경로 이름이 일치하는가
+- 명세 먼저 (v1.16): `docs/spec/`(product F#·rules R#·screens S#, ID 하이픈
+  없음·재사용 금지) 경로가 brainstorming·write-plan·execute-plan("spec 참조와
+  명세 먼저" — v1.15 경로 호환 포함)·reviewer·stage-reviewer·builder·docs·
+  migrate·grill·헌법 §4·README에서 같은가. spec 수정안 → 확인 → `[spec]` 커밋
+  (파일 한정) 순서가 execute-plan·write-plan·헌법에서 일치하는가. "PLAN에
+  규칙·동작 금지(ID만)"가 write-plan·execute-plan에 있는가
+- 역방향 drift (v1.16): stage-reviewer (f-1) 테스트 기대값 3분기(예시와 다름 =
+  BLOCKING · 같아짐 = 통과 · 예시 없음 = BLOCKING)·(f-2) 관측 요소 추가·삭제 ↔
+  reviewer "테스트 기대값 변경"·"spec 미인용 동작 변경" ↔ 헌법 §4 요약 — 3분기
+  문구가 일치하는가. "확신 낮은 지적" 원칙의 예외가 명시돼 있는가. "기준: 현재
+  구현" 금지가 brainstorming·docs·migrate(보고)·stage-reviewer(WARNING)에 있는가
+- 트랙별 대기 시간 (v1.16): metrics 행 정의가 기존 기록만 쓰는가(새 기록 의무 없음)
 - PLAN 완료 블록 (v1.15.2): execute-plan "PLAN 완료 블록"(`## … PLAN 완료 —` +
   `- 상류개입:` — `- 정정:`은 쓰지 않음, 자리표시 금지) ↔ write-plan "하류 정정
   기록"(직전 PLAN 완료 블록에 `- 정정: N (ID)` 덧붙임, 항목 줄 `(정정)` 표시,

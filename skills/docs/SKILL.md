@@ -14,7 +14,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 대체하는 **압축된 컨텍스트**다. 사람에게 좋은 문서와 에이전트에게 좋은
 문서는 같은 문서다: 짧고, 정확하고, 현재 상태와 일치하는 것.
 
-## 문서 7종과 각자의 질문
+## 문서 8종과 각자의 질문
 
 | 문서 | 답하는 질문 | 갱신 시점 |
 |---|---|---|
@@ -22,8 +22,9 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 | `docs/api.md` (또는 스키마 파일) | 모듈/서비스 간 계약이 정확히 뭔가 | 인터페이스 변경 시 |
 | `docs/data-model.md` | 데이터가 어떤 모양이고 왜 그런가 (ERD, 스키마, 제약) | 스키마 변경 시 |
 | `docs/decisions/NNN-제목.md` (ADR) | 왜 이렇게 결정했나 — 대안과 트레이드오프 | 결정 시점에 1회, 이후 불변 |
-| `docs/screens.md` (UI가 있을 때만) | 화면이 어떤 모양·흐름인가 — 화면당 액션·결과 피드백·상태 3종 + 시나리오 플로우 (brainstorming 화면 설계 산출물) | 화면 추가·흐름 변경 stage 완료 시 |
-| `docs/rules.md` (rules: 대상일 때만) | 업무 규칙이 정확히 뭔가 — 용어집 + 규칙 R#마다 원칙 1줄 + 입력→기대 예시 2개 이상(1개 이상 경계·예외) (brainstorming 업무 규칙 정의 산출물). 예시 ID가 테스트 케이스 ID다 | 규칙 추가·변경 stage 완료 시, DECISIONS로 규칙이 확정될 때 |
+| `docs/spec/screens.md` (UI가 있을 때만) | 화면이 어떤 모양·흐름인가 — 화면당 액션·결과 피드백·상태 3종 + 시나리오 플로우 (brainstorming 화면 설계 산출물) | 화면 추가·흐름 변경 stage 완료 시 |
+| `docs/spec/product.md` | 제품이 무엇을 하나 — 기능 F#마다 목적 1줄 + 인수 조건 표(예시 2개 이상, 1개 이상 실패·경계). 프로젝트 전체 기준, 기능마다 새로 쓰지 않음 (v1.16) | 기능 추가·변경 시 — **코드보다 먼저** (명세 먼저) |
+| `docs/spec/rules.md` (rules: 대상일 때만) | 업무 규칙이 정확히 뭔가 — 용어집 + 규칙 R#마다 원칙 1줄 + 입력→기대 예시 2개 이상(1개 이상 경계·예외) (brainstorming 업무 규칙 정의 산출물). 예시 ID가 테스트 케이스 ID다 | 규칙 추가·변경 stage 완료 시, DECISIONS로 규칙이 확정될 때 |
 | `docs/journal.md` | 누가 무엇을 왜 결정했나 — 사람의 입력·판단과 AI 제안의 구분 (포트폴리오 원자료) | 결정 시점마다 1항목 append, 이후 불변 |
 
 **기존 산출물과의 경계** — 겹치면 안 된다:
@@ -32,6 +33,10 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 - **이 스킬의 문서 = 시스템의 현재 상태** (살아있는 문서, 낡으면 즉시 갱신 대상)
 - ADR·journal.md는 예외: 결정의 역사라서 불변(append-only). 뒤집을 땐 새
   ADR·새 journal 항목으로 이전 것을 supersede한다 (이전 항목 수정 금지).
+- `docs/spec/`(product·rules·screens) = **살아있는 명세** (v1.16) — 의도된 동작의
+  정본. "기준: 현재 구현"처럼 구현을 받아 적은 명세는 금지이고, drift가 나면
+  코드를 맞출지 명세를 고칠지는 사용자가 정한다. DESIGN.md는 변경 1건의
+  "어떻게"만 담고 spec ID를 인용한다.
 - `docs/design/` = 디자인 자료(Claude Design 산출물·export). 이 스킬이
   쓰지 않는다 — brainstorming 디자인 확인 단계 산출물이고, 대조 결과는
   DESIGN.md `design:` 줄에 남는다.
@@ -53,7 +58,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 ## 절차
 
 ### 1. 현황 파악
-- 문서 7종의 유무(journal.md는 append-only 기록이라 drift 스캔 대상 아님)와 마지막 갱신 시점 확인 (git log)
+- 문서 8종의 유무(journal.md는 append-only 기록이라 drift 스캔 대상 아님)와 마지막 갱신 시점 확인 (git log)
 - **drift 스캔**: 문서의 주장 vs 코드의 실제
 
   | 문서 | 검사 항목 | 대조 대상 |
@@ -62,6 +67,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
   | api.md | 엔드포인트/시그니처 | 실제 라우트·타입 정의 |
   | data-model.md | 스키마 | 실제 마이그레이션/모델 파일 |
   | screens.md | 화면 목록 | 코드의 라우트/화면 컴포넌트 목록 — 화면 있는데 스펙 없음·스펙 있는데 화면 없음을 보고 |
+  | product.md | 예시 ID(`F3-예1`)마다 테스트 존재 · 인수 조건 빈 기능 · "기준: 현재 구현" 문구 | 테스트 코드 grep — 인수 조건은 있는데 테스트 없음·조건 없는 기능을 보고 |
   | rules.md | 예시 ID(`R3-예1`)마다 테스트 존재 · 예시 칸 빈 규칙 | 테스트 코드 grep — 예시는 있는데 테스트 없음·예시 없는 규칙을 보고 |
   | 프로젝트 CLAUDE.md | 4KB 초과, 또는 진행 상황·Phase 기술이 실제와 불일치, 또는 '넣지 않을 것' 목록 위반 (헌법 §6 규율) | PLAN.md, 실제 코드 |
 - drift 발견 → 신규 작성보다 갱신이 항상 우선
@@ -69,8 +75,8 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
 ### 2. 프로젝트 크기별 스코프
 - **소형 (파일 <20개)**: ARCHITECTURE.md 하나에 4종 압축 (구조 + 주요
   인터페이스 + 데이터 모양 + 결정 몇 줄). 파일 쪼개기는 과잉.
-  단 `docs/screens.md`는 UI가 있으면 압축하지 않고 별도 유지한다 —
-  frontend verify가 `docs/screens.md#화면명`으로 참조하는 대상이라서다.
+  단 `docs/spec/screens.md`는 UI가 있으면 압축하지 않고 별도 유지한다 —
+  frontend verify가 `docs/spec/screens.md#화면명`으로 참조하는 대상이라서다.
 - **중형 (esi-flow류)**: ARCHITECTURE.md + ADR. api/data-model은
   해당 복잡도가 생길 때.
 - **대형/다인원**: 4종 전부(+UI면 screens.md) + 개발 환경 셋업(`docs/setup.md`).
@@ -129,7 +135,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
    - [ ] N.x ARCHITECTURE.md 갱신 · role: docs · tier: standard · risk: normal · verify: drift 스캔 통과
    ```
    구조 변경 없는 stage에는 넣지 않는다 — 매 stage 문서 갱신은 과잉.
-   화면 추가·흐름 변경 stage의 `docs/screens.md 갱신` 태스크(write-plan이
+   화면 추가·흐름 변경 stage의 `docs/spec/screens.md 갱신` 태스크(write-plan이
    심는다)도 role=docs "drift 스캔 통과"이므로 **기존 절차형 verify 2종의
    범위 안이다 — 헌법 개정 불필요.**
    문서 태스크에 **프로젝트 CLAUDE.md 갱신 항목이 있으면 반드시 stage
@@ -139,7 +145,7 @@ builder는 태스크마다 신선한 컨텍스트로 뜬다 — 시스템 구조
    결정을 내리면, 그 결정+근거를 `docs/decisions/`에 ADR로(출처 칸 포함),
    같은 결정을 `docs/journal.md`에 항목으로 기록하고 서로 링크한다.
    결정의 맥락이 채팅에서 증발하는 걸 막는다. 규칙에 관한 결정이면
-   `docs/rules.md`에 예시 행으로도 반영한다.
+   `docs/spec/rules.md`에 예시 행으로도 반영한다.
 3. **builder 브리핑**: 오케스트레이터는 builder 투입 시 ARCHITECTURE.md
    존재를 브리핑에 명시 — "구조 파악은 이 문서 먼저, 코드 탐색은 그다음".
 
