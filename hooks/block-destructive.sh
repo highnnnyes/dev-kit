@@ -16,13 +16,25 @@
 #     오탐 방지: git checkout -b(브랜치 생성)·git checkout <브랜치>(전환)는 허용 —
 #     경로 인자가 있는 형태만 차단한다 (워크트리 격리가 브랜치 조작에 의존한다).
 #   [데이터 파괴] DROP SCHEMA/DATABASE/TABLE·TRUNCATE·flyway clean·rm -rf 등 데이터·환경을 지우는 명령.
+#     DB 패턴은 **실행 명령에 앵커링**한다 (v1.16.1 — 진단 §7-7 오탐 2건: 히어독 문서의
+#     "DROP SCHEMA", grep 검색어의 "pg_restore"가 차단됐다):
+#       (a) SQL 문장 패턴(drop schema/database/table·truncate·delete where 1=1)은 명령 안에
+#           DB 실행기 토큰(psql·mysql·sqlite3·flyway·docker·ssh 등 — EXEC_RE)이 있을 때만 매치.
+#           그래서 `echo "drop schema x" | psql`·`psql <<EOF … DROP …`·`sh -c 'psql …'`은
+#           막히고, grep/sed/awk 검색어·cat/echo/printf 출력·git commit 메시지·히어독 문서는 통과.
+#       (b) 실행기 자체 패턴(dropdb·pg_restore·flyway clean)은 **명령 위치**(선두, `| ; & ( \``·
+#           줄바꿈 뒤, sudo/exec/docker exec/ssh/sh -c 뒤)에 있을 때만 매치 — 검색어·문서 본문 제외.
+#     rm -rf·git 계열·docker volume rm·compose down -v는 앵커링 대상이 아니다(현행 유지).
+#     입력→기대 표는 hooks/test-block-destructive.sh — 이 파일을 고치면 그 테스트를 돌린다.
 #   [스코프 밖 쓰기] Edit/Write의 file_path가 프로젝트 루트 .dev-kit-scope 목록에
 #     없으면 deny. 파일이 없으면 검사를 건너뛴다 (단독 작업·수동 세션 대응).
 #     한계: 동시 디스패치된 태스크 **간** 교차는 못 막는다(둘 다 목록에 있으므로) —
 #     그 층은 워크트리 격리(B)가 담당한다. README 참조.
 #
-# 한계: 문자열 매칭이라 .sql 파일 경유·변수 조립·스크립트 래핑으로 우회 가능하다.
-# 최종 보증은 DB 권한(harden 스킬 L1)이며 이 훅은 심층방어의 한 겹이다.
+# 한계: 문자열 매칭이라 .sql 파일 경유(`psql -f x.sql` — 파일 내용은 안 보인다)·변수 조립·
+# 스크립트 래핑으로 우회 가능하다. 최종 보증은 DB 권한(harden 스킬 L1)이며 이 훅은
+# 심층방어의 한 겹이다. `psql -f`/`mysql <` 형태의 차단은 v1.19 검토 항목(myroquant h.2c가
+# scripts/db_roles.sql 적용을 남겨 두고 있어 이번에 넣지 않았다 — dev-kit journal 2026-10-17).
 
 set -u
 
@@ -123,26 +135,64 @@ m() { MATCHED="$1"; }
 mr() { MATCHED="$1"; MATCHED_CAT="revert"; }
 
 # [데이터 파괴] -----------------------------------------------------------
+# DB 앵커링 보조 정의 (헤더 주석의 (a)·(b)).
+# EXEC_RE: 명령 어딘가에 DB 실행기 토큰이 단어 경계로 있는가 — (a) SQL 문장 패턴의 전제.
+EXEC_RE='(^|[^a-z0-9_./-])(psql|pgcli|mysql|mysqladmin|mariadb|mycli|sqlite3|sqlcmd|mongosh|mongo|redis-cli|clickhouse-client|cqlsh|flyway|liquibase|alembic|prisma|docker|kubectl|ssh)($|[^a-z0-9_-])'
+HAS_EXEC=0
+printf '%s' "$NORM" | grep -Eq "$EXEC_RE" && HAS_EXEC=1
+# NORM_SEP: 줄바꿈을 `;`로 바꾼 정규화 — 다음 줄 선두도 명령 위치다 (히어독 본문 줄도
+# 명령 위치로 보이지만, (a) 패턴은 EXEC_RE가 없으면 매치하지 않으므로 문서 본문은 통과한다).
+NORM_SEP="$(printf '%s' "$COMMAND" \
+  | tr '[:upper:]' '[:lower:]' | tr '\t' ' ' | sed 's/$/ ;/' | tr '\n' ' ' | sed 's/  */ /g')"
+# cmdpos <토큰 정규식>: 토큰이 명령 위치에 있는가 — (b) 실행기 자체 패턴용.
+# 세그먼트(`| ; & ( \`` 분리) 선두, 또는 래퍼(sudo/exec/nohup/time/xargs/env X=Y/
+# docker [compose] exec <c>/ssh <h> "/sh -c ") 뒤에 토큰이 오면 명령 위치다.
+cmdpos() {
+  printf '%s' "$NORM_SEP" | tr '|;&(`' '\n' | sed 's/^ *//' \
+    | grep -Eq "^((sudo|exec|nohup|time|xargs)( -[a-z]+( [^ -][^ ]*)?)* |env ([^ ]*=[^ ]* )*|docker (compose )?exec [^'\"]*|ssh [^'\"]*['\"]?|(sh|bash|zsh) -l?c ['\"])*($1)( |$|['\"])"
+}
+
 case "$NORM" in
-  *"drop schema"*)   m "drop schema" ;;
-  *"drop database"*) m "drop database" ;;
-  *"drop table"*)    m "drop table" ;;
-  *dropdb*)          m "dropdb" ;;
-  *pg_restore*)      m "pg_restore" ;;
   *"docker volume rm"*) m "docker volume rm" ;;
   *"git reset --hard"*) m "git reset --hard" ;;
 esac
 
+if [ -z "$MATCHED" ] && [ "$HAS_EXEC" = 1 ]; then
+  # (a) SQL 문장 패턴 — 실행기 토큰이 있을 때만
+  case "$NORM" in
+    *"drop schema"*)   m "drop schema" ;;
+    *"drop database"*) m "drop database" ;;
+    *"drop table"*)    m "drop table" ;;
+  esac
+  if [ -z "$MATCHED" ]; then
+    if printf '%s' "$NORM" | grep -Eq '(^|[^a-z_])truncate($|[^a-z_])'; then
+      # 따옴표 뒤(`-c "TRUNCATE users"`)도 잡도록 단어 경계로 본다 (v1.16.1 결함 수정).
+      m "truncate"
+    elif printf '%s' "$NORM" | grep -Eq 'delete +from .* where +1 *= *1'; then
+      m "delete from where 1=1"
+    fi
+  fi
+fi
+
 if [ -z "$MATCHED" ]; then
-  # 정규식이 필요한 패턴들
-  if printf '%s' "$NORM" | grep -Eq '(^| |;|&|\|)truncate( |$)'; then
-    m "truncate"
-  elif printf '%s' "$NORM" | grep -Eq 'delete +from .* where +1 *= *1'; then
-    m "delete from where 1=1"
-  elif printf '%s' "$NORM" | grep -Eq '(^|[^a-z])flyway( +[^ ]+)* +clean( |$)|(^|[^a-z])flywayclean( |$)'; then
-    # flyway CLI `flyway clean`·Gradle/Maven `flywayClean` — 스키마의 모든 객체를 지운다.
+  # (b) 실행기 자체 패턴 — 명령 위치일 때만
+  if cmdpos 'dropdb'; then
+    m "dropdb"
+  elif cmdpos 'pg_restore'; then
+    m "pg_restore"
+  elif printf '%s' "$NORM" | grep -Eq '(^|[^a-z])flyway( +[^ ]+)* +clean( |$)|(^|[^a-z])flywayclean( |$)|(^|[^a-z])flyway:clean( |$)' \
+     && cmdpos 'flyway|(\./)?gradlew|gradle|(\./)?mvnw|mvn|npx|pnpm|yarn|npm'; then
+    # flyway CLI `flyway clean`·Gradle `flywayClean`·Maven `flyway:clean` — 스키마의 모든 객체를 지운다.
     m "flyway clean"
-  elif printf '%s' "$NORM" | grep -Eq '(docker +compose|docker-compose)( +[a-z-]+)* +down' \
+  elif cmdpos 'truncate'; then
+    # coreutils truncate(파일 비우기)가 명령 선두에 오는 형태 — 현행 차단 유지.
+    m "truncate"
+  fi
+fi
+
+if [ -z "$MATCHED" ]; then
+  # 정규식이 필요한 패턴들 (앵커링 대상 아님 — 현행 유지)
+  if printf '%s' "$NORM" | grep -Eq '(docker +compose|docker-compose)( +[a-z-]+)* +down' \
      && printf '%s' "$NORM" | grep -Eq '(^| )(-v|--volumes)( |$)'; then
     m "docker compose down -v"
   elif printf '%s' "$NORM" | grep -Eq 'rm +(-[a-z-]* )*-([a-z]*r[a-z]*f|[a-z]*f[a-z]*r)' \
@@ -208,12 +258,11 @@ if [ -z "$MATCHED" ]; then
   esac
 fi
 
-# 문자열 오탐 제외: 단일 `git commit`/`git log`/`echo`처럼 파괴에 도달할 수
-# 없는 명령에 패턴이 문자열로 들어간 경우 (예: 커밋 메시지에 "drop table",
-# "git checkout 사고"). 파이프·연결(| ; &)이 있으면 실행 경로로 흘려보낼 수
-# 있으므로 제외하지 않는다.
+# 문자열 오탐 제외 (되돌리기 범주 한정): 단일 `git commit`/`git log`/`echo`처럼
+# 파괴에 도달할 수 없는 명령에 패턴이 문자열로 들어간 경우 (예: 커밋 메시지에
+# "git stash 사고"). 파이프·연결(| ; &)이 있으면 실행 경로로 흘려보낼 수
+# 있으므로 제외하지 않는다. DB 패턴은 v1.16.1부터 위의 실행기 앵커링이 담당한다.
 case "$MATCHED" in
-  "drop schema"|"drop database"|"drop table"|"truncate"|"delete from where 1=1"|"flyway clean"|\
   "git checkout <경로>"|"git restore"|"git clean"|"git stash"|"git rm"|\
   "git branch -D"|"git reflog expire")
     if ! printf '%s' "$NORM" | grep -Eq '[|;&]'; then

@@ -349,6 +349,26 @@ dev-kit 리포 docs/diagnosis-2026-10.md §7-8-1, 기준일 규칙 3회 재정�
      이어 쓰지 않는다. 단 **사전 승격(risk: high)은 태스크의 속성**이므로
      모든 라운드에서 opus를 유지한다. 같은 태스크 3회 FAIL이면 루프 중단, 보고. FAIL 카운트·시도
      횟수는 최종 verdict로만 센다 — 오판으로 뒤집힌 태스크는 시도 1회다.
+   - **spec-cite 재브리핑 [엄격] (v1.16.1)**: 최종 verdict의 BLOCKING에
+     `[spec-cite]` 태그("spec 인용 확인 필요" — reviewer가 발췌에 없는 기대값
+     변경을 봤다는 뜻)가 있으면 builder를 재호출하기 **전에** 오케스트레이터가
+     `docs/spec/*.md`를 직접 grep해 그 기대값에 해당하는 예시(F/R/S 예시 행)가
+     있는지 확인한다. 판별은 둘 중 하나다:
+     ① **spec에 있음** → 인용 누락이다(write-plan 몫, builder 잘못이 아니다).
+       PLAN.md 태스크 줄의 verify에 그 ID(`docs/spec/rules.md#R3 기준` 등)를
+       보완하고, 리뷰 입력 ⑥에 해당 섹션 발췌를 추가해 **같은 diff를 재리뷰**한다
+       (builder 재호출 없음). 이 라운드는 **시도 횟수·FAIL 카운트에 넣지 않는다**
+       — PROGRESS 블록에 `- FAIL사유: [요약] 유형(spec-cite)` 1줄만 남긴다
+       (헤더 `시도 X회`는 올리지 않는다. /metrics가 이 유형을 재시도율에서
+       빼고 별도 집계한다 — 많으면 write-plan 인용 규칙이 안 지켜지는 신호).
+       `[spec-cite]` 외의 BLOCKING이 같이 있으면 그것들은 정상 FAIL이다 —
+       재브리핑에 ①의 발췌를 함께 넣고 시도 횟수는 그 FAIL로 센다.
+     ② **spec에도 없음** → "spec 예시 추가가 먼저"다. 정상 FAIL(유형
+       `verify 미충족`)로 세고, 재브리핑 대신 **명세 먼저 절차**(spec 수정안 →
+       사용자 확인 → `[spec]` 커밋)로 넘긴다 — DECISIONS로 올리고 멈춘다.
+       stage-reviewer (f-1)의 "spec에 없으면 BLOCKING"과 같은 결과다.
+     근거: reviewer는 발췌만 보고 stage-reviewer는 spec을 직접 읽어 두 층의
+     판정이 갈렸다 (dev-kit 리포 docs/review-2026-10-16.md §1-3 P1).
    - PASS → 4로.
 4. **체크 + 기록**: PLAN.md에서 해당 태스크를 [x]로 갱신하고, 다음 두 가지를 남긴다:
    - **PROGRESS.md** (프로젝트 루트, 없으면 생성)에 태스크당 한 블록 append.
@@ -365,12 +385,26 @@ dev-kit 리포 docs/diagnosis-2026-10.md §7-8-1, 기준일 규칙 3회 재정�
        요약·축약 금지. 계측이 로그에 남아야 스코프 준수와 읽기 전용 준수를
        사후 검증할 수 있다]
      - 파괴적명령: [builder DESTRUCTIVE 행을 그대로 전재 — "없음"도 그대로 적는다]
-     - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|verify-gate|기타)]
+     - FAIL사유: [BLOCKING 요약 한 줄 + 유형(컨벤션 위반|기능 결함|verify 미충족|보안|verify-gate|spec-cite|기타)]
        (verify 선행 게이트·red 확인에서 걸린 실패는 유형 `verify-gate` —
-       BLOCKING 요약 자리에 실패한 verify 명령과 결과 한 줄)
+       BLOCKING 요약 자리에 실패한 verify 명령과 결과 한 줄. 인용 보완 재리뷰는
+       유형 `spec-cite` — 시도 횟수에 넣지 않는다, 위 "spec-cite 재브리핑")
      - 넘김: [builder NOTES / reviewer NON-BLOCKING]
      - 대상: [R3, screens#결과화면] [· 보완=stage-review|merge-fail|user-fix]
+     - 비용: 호출 N(b2·r1·s0) · 브리핑 N자 · 대기 Nm · 기록 Nm   (선택 행 — 아래)
      ```
+     **`- 비용:` 줄 (v1.16.1 — 선택 행, 루프 비용 측정)**: 오케스트레이터가
+     디스패치하면서 직접 아는 값만 적는다 — `호출` = 이 태스크에 디스패치한
+     서브에이전트 수(b = builder/builder-light red·green·재작업 합, r = reviewer
+     라운드 + 사후 승격, s = 이 태스크로 트리거된 stage-reviewer 0|1), `브리핑` =
+     디스패치한 브리핑 본문의 문자 수 합, `대기` = 이 태스크 안에서 사용자 응답을
+     기다린 시간(DECISIONS·확인 게이트·(j) 정지 → 재개, 없으면 0m), `기록` =
+     마지막 verdict → 커밋·PROGRESS·journal 기록 완료까지. **추정 금지** — 셀 수
+     없는 값은 `n/a(사유)`. 토큰은 여기 적지 않는다 — /metrics가 세션 로그에서
+     직접 읽는다. 이 줄은 **선택 행**이다: 기록 계약 준수 검사(metrics "기록
+     계약 준수"·v1.15 설계 §5 적용 실패 조건)의 대상이 아니며, 없어도 위반이
+     아니다. 필수화는 루프 비용 절감 단계(v1.19)에서 정한다. 루프의 판정·순서는
+     바꾸지 않는다 (dev-kit 리포 docs/review-2026-10-16.md §7-9).
      `- 대상:` 줄은 태스크 verify의 `docs/spec/rules.md#R…`·`docs/spec/screens.md#…`
      참조와 `docs/spec/product.md#F…` 참조를 **기계적으로** 옮긴다 (판단 없음 —
      참조가 없으면 줄 생략). 변환은 고정이다: `#F3`→`F3`, `#R3`→`R3`, `#S3`→`S3`,
@@ -523,7 +557,7 @@ dev-kit 리포 docs/diagnosis-2026-10.md §7-8-1, 기준일 규칙 3회 재정�
 - **사건** (키마다, PROGRESS.md + PROGRESS.archive.md 합산 — grep으로 센다):
   ① 그 키를 가진 태스크 블록 중 `FAIL후PASS` 또는 `[verify 미통과]`
   `BLOCKED` 1블록 = 1사건 — FAIL사유 유형이 기능 결함·verify 미충족·
-  verify-gate 중 하나 이상일 때만 (컨벤션 위반·보안·기타만이면 제외,
+  verify-gate 중 하나 이상일 때만 (컨벤션 위반·보안·spec-cite·기타만이면 제외,
   `[전제 붕괴]` BLOCKED는 제외 — 중단 조건 (b)가 이미 멈춘다), ② `보완=stage-review` · `보완=merge-fail` 블록 1개 =
   1사건, ③ 사용자 정정으로 추가된 태스크(`보완=user-fix` — 사용자가 이미
   확정된 규칙·화면 동작을 정정해 생긴 태스크에 오케스트레이터가 표시)
@@ -661,6 +695,8 @@ RESUME 블록을 갱신한다 (stage 경계 처리의 RESUME 규칙과 동일 �
 구조화 라인에서 집계한다 — 롤링 요약으로 압축된 stage의 원본 라인은 archive에 있다):
 - 총 태스크 / 1회 통과 / 재시도 발생(비율%) / BLOCKED
 - verify-gate FAIL 건수 (게이트가 리뷰 전에 차단한 라운드 수 = 절약된 리뷰 호출 수)
+- spec-cite 건수 (인용 보완 재리뷰 — 재시도율 미산입, 별도 표기. 많으면 write-plan
+  인용 규칙 미준수 신호)
 - tier별 분포 (light/standard 각 몇 건, light 승급 건수)
 - risk별 분포 (normal/high 각 몇 건 — high는 전부 opus 사전 승격)
 - FAIL 사유 상위 유형 (컨벤션 위반·기능 결함·verify 미충족·보안·기타)

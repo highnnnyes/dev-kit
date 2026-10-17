@@ -3,6 +3,48 @@
 버전 bump마다 항목을 추가한다. 형식: `## vX.Y.Z — 날짜` + 변경 요약 불릿.
 기기 간 `/plugin update dev-kit` 후 이 파일로 변경분을 확인한다.
 
+## v1.16.1 — 2026-10-17
+외부 검토 기록(dev-kit 리포 docs/review-2026-10-16.md §1-3 P1·P2·P3) 결함 수정 3건 +
+루프 비용 **측정** 장치. 설계 변경 없음, 루프 판정·순서 불변. 결정과 출처 태그는
+docs/journal.md 2026-10-17. 로드맵: v1.17(데이터 설계·와이어프레임 상시·규모 판정)
+→ v1.18(개발자 문서 사이트·운영 가이드·비기능 예시) → v1.19(루프 비용 절감·통폐합,
+v1.15·v1.16 판정 후).
+
+- **C-1 reviewer 기대값 판정 4분기 + `spec-cite` 유형** [엄격]: 발췌(⑤⑥)에 예시가
+  없으면 BLOCKING "spec 인용 확인 필요" + `[spec-cite]` 태그로 분리. execute-plan
+  "spec-cite 재브리핑" — 오케스트레이터가 `docs/spec/`을 직접 확인해 ① 있으면
+  verify 인용 보완 + ⑥ 발췌 추가 후 같은 diff 재리뷰(**시도 횟수·FAIL 카운트
+  미산입**, FAIL사유 유형 `spec-cite`만 기록) ② 없으면 "spec 예시 추가가 먼저"로
+  명세 먼저 절차 정지(정상 FAIL). stage-reviewer (f-1)과 결과가 같아진다.
+  /metrics 재시도율 행에 spec-cite 별도 표기(미산입 — write-plan 인용 누수 신호,
+  v1.19 입력). 대상 반복 사건에서 제외. spec: active 프로젝트에서만 켜진다.
+- **C-2 훅 DB 패턴 실행 명령 앵커링** (hooks/block-destructive.sh): SQL 문장
+  패턴(drop schema/database/table·truncate·delete where 1=1)은 DB 실행기 토큰
+  (psql·mysql·sqlite3·flyway·docker·ssh 등)이 명령에 있을 때만, 실행기 자체 패턴
+  (dropdb·pg_restore·flyway clean)은 명령 위치일 때만 매치. 히어독 문서·grep/sed/
+  awk 검색어·git commit 메시지·echo/printf·python print는 통과(진단 §7-7 오탐 2건
+  해소). 결함 수정 3건 — 따옴표 뒤 `TRUNCATE`·`&&` 뒤 psql·`mvn flyway:clean`이
+  통과되던 것을 차단. 입력→기대 표 56건을 `hooks/test-block-destructive.sh`로
+  고정(전부 통과). `psql -f`/`mysql <`(SQL 파일 실행) 차단은 v1.19 검토로 이월
+  (myroquant h.2c가 db_roles.sql 적용을 남겨 둠). v1.15.2가 "v1.15.3으로 이월"로
+  적었던 훅 선두 명령 앵커링은 **이 버전에서 해소**.
+- **C-3 v1.15 판정 "적용 실패(기록 미준수)" 조건 2개** (docs/v1.15-design.md §5):
+  after 구간에 ① 태스크 블록 없이 Stage 요약만 있는 stage ≥ 1 ② `- FAIL사유:` 줄
+  전체 중 유형 누락 ≥ 20%(분모 = after 구간 FAIL사유 줄 전체, PLAN별 아님)면 지표
+  판정을 내지 않는다. 사전 등록 기준 변경 — 원래 기준의 판정도 병행 보고.
+- **C-4 루프 비용 측정 장치** (사용자 지시 "상용화까지 루프 토큰 비용 절감"의 측정
+  단계 — 절감은 v1.19): PROGRESS 태스크 블록 `- 비용: 호출 N(b·r·s) · 브리핑 N자 ·
+  대기 Nm · 기록 Nm` **선택 행**(기록 계약 준수 검사 대상 아님, 필수화는 v1.19).
+  /metrics "루프 비용" 2행 — PROGRESS 기반 중앙값(tier별)·순수 루프 소요(소요 −
+  대기)·과거분 RESUME 대기 / **토큰은 Claude Code 세션 로그에서 직접** 읽는다
+  (`~/.claude/projects/<슬러그>/*.jsonl` usage·`subagents/*.meta.json` agentType·
+  `cost-state` USD — 태스크 시각 창 조인, 대리값 불필요). 한계: 기기별 저장·기본
+  30일 삭제(`cleanupPeriodDays` 기기마다 설정 필요)·UTC. v1.15 설계 §5 교란 요인에
+  "기록 1줄 추가"로 명시.
+- 기록만: P5 측정 창 동결(v1.15 판정 전 v1.15.x 동작 변경 금지)은 journal 운영 규칙.
+  P4 지시량 통폐합은 v1.19. `docs/review-2026-10-16.md` 추가.
+- audit C에 spec-cite 계약·훅 테스트·`- 비용:` 선택 행 검사.
+
 ## v1.16.0 — 2026-10-15
 명세 먼저 — 살아있는 명세 `docs/spec/`. 설계·근거·적용 순서는 dev-kit 리포
 docs/v1.16-design.md. 근거: esi-flow 진단(§7) — 규칙이 PLAN "확정 결정" 줄에만

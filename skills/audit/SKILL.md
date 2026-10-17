@@ -86,7 +86,12 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
 - 역방향 drift (v1.16): stage-reviewer (f-1) 테스트 기대값 3분기(예시와 다름 =
   BLOCKING · 같아짐 = 통과 · 예시 없음 = BLOCKING)·(f-2) 관측 요소 추가·삭제 ↔
   reviewer "테스트 기대값 변경"·"spec 미인용 동작 변경" ↔ 헌법 §4 요약 — 3분기
-  문구가 일치하는가. "확신 낮은 지적" 원칙의 예외가 명시돼 있는가. "기준: 현재
+  문구가 일치하는가. **reviewer 4분기 (v1.16.1)**: 발췌에 예시 없음 = BLOCKING
+  "spec 인용 확인 필요" + `[spec-cite]` 태그 ↔ execute-plan "spec-cite 재브리핑"
+  (① spec에 있으면 인용 보완 재리뷰·시도 횟수·FAIL 미산입·유형 `spec-cite` ②
+  없으면 명세 먼저 정지·정상 FAIL) ↔ PROGRESS FAIL사유 유형 목록에 `spec-cite`
+  ↔ metrics 재시도율 행 별도 표기(미산입) ↔ 대상 반복 사건 제외 목록 ↔ 헌법 §4
+  요약 — 태그·유형 이름·미산입 규칙이 일치하는가. "확신 낮은 지적" 원칙의 예외가 명시돼 있는가. "기준: 현재
   구현" 금지가 brainstorming·docs·migrate(보고)·stage-reviewer(WARNING)에 있는가
 - 트랙별 대기 시간 (v1.16): metrics 행 정의가 기존 기록만 쓰는가(새 기록 의무 없음)
 - PLAN 완료 블록 (v1.15.2): execute-plan "PLAN 완료 블록"(`## … PLAN 완료 —` +
@@ -132,7 +137,9 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   시점 해석이 metrics.md 파싱 규칙과 일치하는가, [P] 태스크(메인 트리 기록)·
   mode B 트랙 태스크(`PROGRESS.<트랙>.md` — 파일명 분리로 머지 시 원문 보존)
   의 타임스탬프가 통합 시 보존되는가. **계측용** 새 기록 의무는 `- 시작:`
-  1줄(태스크당)과 PLAN 완료 블록(PLAN당 1개, v1.15.2)까지만 — metrics를 위해
+  1줄(태스크당)과 PLAN 완료 블록(PLAN당 1개, v1.15.2), `- 비용:` **선택 행**
+  (v1.16.1 — 기록 계약 준수 검사·v1.15 설계 §5 적용 실패 조건의 대상이 아니어야
+  한다, 토큰은 세션 로그에서 읽고 PROGRESS에 적지 않는다)까지만 — metrics를 위해
   그 이상을 루프에 추가하면 안 된다 (`- 대상:`은
   중단 조건 (j)의 계수 키로 도입된 것이라 이 제한의 대상이 아니다 — metrics는
   부산물로 읽기만 하는지 확인)
@@ -155,7 +162,11 @@ description: dev-kit 리포 자체의 정합성 감사. plugin.json version을 �
   matcher Bash|Edit|Write)·PreCompact(precompact-resume.sh) 양쪽**이 등록돼
   있는가, 스크립트 경로(`${CLAUDE_PLUGIN_ROOT}` 기준)·실행 권한이 맞는가,
   README의 차단 패턴 목록(되돌리기 범주 포함)이 스크립트 실제 패턴과
-  일치하는가, fail open(exit 0)이 유지되는가
+  일치하는가, fail open(exit 0)이 유지되는가. **훅 테스트 (v1.16.1)**:
+  `hooks/test-block-destructive.sh`가 실재하고 `bash hooks/test-block-destructive.sh`가
+  실패 0으로 끝나는가(감사 중 실행해도 된다 — DB·git 명령을 실행하지 않는 stdin
+  JSON 테스트다). DB 앵커링 규칙(SQL 문장 패턴 = 실행기 토큰 전제, 실행기 자체
+  패턴 = 명령 위치)이 스크립트 헤더·README "파괴 방어 3층"·헌법 §5에서 같은가
 - `.dev-kit-scope` 생산(execute-plan: 디스패치 직전 생성·반환 직후 삭제)
   ↔ 소비(훅의 Edit/Write 스코프 검사) — 파일명·형식(한 줄에 경로 하나)이
   양쪽에서 일치하는가

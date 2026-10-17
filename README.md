@@ -302,6 +302,13 @@ PROGRESS.md(+archive, mode B는 `PROGRESS.<트랙>.md` 포함)를 파싱해
 직접 수행한다(서브에이전트 없음 — 토큰 ≈ 0). **파싱 실패 항목은 추정으로
 메우지 않고 `n/a (사유)`로 표기한다 [엄격]** — 지표 신뢰성이 존재 이유다.
 
+v1.16.1부터 **루프 비용** 2행이 붙는다 (측정만 — 절감 조치는 v1.15·v1.16 효과
+판정 뒤 v1.19): ① PROGRESS `- 비용:` 선택 행(호출 수·브리핑 자 수·사용자 대기·
+기록 소요)의 tier별 중앙값과 **순수 루프 소요**(소요 − 대기), 과거분 RESUME
+대기 ② **토큰 — Claude Code 세션 로그에서 직접** 읽는다(아래 "토큰 관리"의
+출처·한계). 재시도율 행에는 `spec-cite`(인용 보완 재리뷰, 재시도율 미산입)
+건수가 별도로 붙는다.
+
 측정 프로토콜 (상단 "Measured on real runs" 채우기):
 1. 비슷한 규모의 계획을 순차(mode S)·mode A로 각 1회 완주한다
 2. 각각 `/dev-kit:metrics`를 실행한다
@@ -389,6 +396,14 @@ reviewer 호출 전에 verify를 직접 실행하는 선행 게이트에서 걸�
 절약한 리뷰 호출 수와 같다. builder의 자기 보고는 참고 정보일 뿐 진실의 원천은
 게이트의 독립 실행이므로, 이 유형이 많다는 것은 builder 자기 보고가 부정확하다는
 신호이기도 하다 (tier 배분·브리핑 품질 재검토 대상).
+
+v1.16.1부터 유형 **`spec-cite`**가 추가됐다 [엄격] — reviewer가 기존 테스트 기대값
+변경을 봤는데 브리핑 발췌(⑤⑥)에 해당 예시가 없는 경우다. reviewer는 발췌만
+보므로 "spec에 있는데 verify가 인용하지 않은 것"과 "spec에도 없는 것"을 가를 수
+없다. 그래서 오케스트레이터가 `docs/spec/`을 직접 확인해 전자면 인용을 보완하고
+같은 diff를 재리뷰한다 — **시도 횟수·재시도율에 넣지 않는다**(builder 잘못이
+아니라 write-plan 인용 누락). 후자는 "spec 예시 추가가 먼저"로 정상 FAIL + 명세
+먼저 절차다. 이 유형의 건수가 많으면 write-plan 인용 규칙이 안 지켜진다는 신호다.
 
 해석 기준 — **재시도율 10~30%가 건강 범위**:
 - **0%에 수렴** → 리뷰어가 형식적으로 통과시키는 중일 가능성. reviewer의
@@ -488,11 +503,26 @@ v1.15가 예시를 강제했어도 그 예시가 PLAN의 "확정 결정" 줄에 
 먼저 한다** (write-plan이 HARDENING.md 없으면 Stage 1에 태스크를 심는다).
 
 훅의 알려진 한계와 설계 선택:
-- `psql -f reset.sql`처럼 파일 경유하면 매칭되지 않는다
-- `CMD="drop table x"; psql -c "$CMD"`처럼 변수 조립하면 매칭되지 않는다
-- 반대로 SQL 키워드가 문자열로 들어간 `git commit -m "drop table 지원"`은
-  오탐이라, 파이프·연결(`| ; &`)이 없는 단독 `git commit`/`git log`/`echo`/
-  `printf`는 예외 처리했다 (DB에 도달할 수 없는 명령이므로)
+- `psql -f reset.sql`처럼 파일 경유하면 매칭되지 않는다 (파일 내용이 명령에
+  없다). `psql -f`/`mysql <` 형태 자체를 막고 예외 파일로 푸는 안은 v1.19 검토
+  항목 — myroquant 미완료 태스크가 `scripts/db_roles.sql` 적용을 남겨 두고 있어
+  측정 중인 프로젝트에 새 차단을 켜지 않았다 (journal 2026-10-17)
+- `CMD="…"; psql -c "$CMD"`처럼 다른 명령줄에서 조립한 변수는 매칭되지 않는다
+  (같은 명령줄에 문자열이 있으면 잡는다)
+- **DB 패턴은 실행 명령에 앵커링한다 (v1.16.1)** — 진단 §7-7에서 히어독 문서
+  본문의 "DROP SCHEMA"와 grep 검색어의 "pg_restore"가 차단돼 문서 편집 경로를
+  막았다. 지금은 SQL 문장 패턴(drop schema/database/table·truncate·delete where
+  1=1)은 명령에 DB 실행기 토큰(psql·mysql·sqlite3·flyway·docker·ssh 등)이 있을
+  때만, 실행기 자체 패턴(dropdb·pg_restore·flyway clean)은 명령 위치(선두·
+  `| ; &`·줄바꿈·sudo/docker exec/ssh/sh -c 뒤)일 때만 매치한다. 히어독 문서·
+  grep/sed/awk 검색어·git commit 메시지·echo/printf·python print는 통과하고,
+  `echo "…" | psql`·`psql <<EOF`·`sh -c 'psql …'`은 막힌다. 같은 수정에서 따옴표
+  뒤 `TRUNCATE`·`&&` 뒤 psql·`mvn flyway:clean`이 통과되던 결함 3건을 고쳤다.
+  **입력→기대 표 56건이 `hooks/test-block-destructive.sh`다** — 훅을 고치면
+  이 테스트를 돌린다(`bash hooks/test-block-destructive.sh`, 실패 0이어야 한다).
+  차단 범위가 줄어드는 변경은 표를 먼저 확인받고 테스트에 반영한다.
+- 되돌리기(git) 범주는 앵커링 대상이 아니다 — 파이프·연결이 없는 단독
+  `git commit`/`git log`/`echo`/`printf`만 예외 처리한다 (현행 유지)
 - 상시 허용이 필요하면 `.dev-kit-allow-destructive`에 패턴 ID를 적는다.
   이 파일은 **`.gitignore` 금지** — git에 추적돼야 리뷰에서 보인다
 
@@ -683,8 +713,24 @@ haiku/sonnet/opus 별칭만 받아 fable을 직접 지정할 수 없으므로 �
 ## 토큰 관리
 
 이 워크플로우는 태스크마다 서브에이전트를 띄우므로 단일 세션 대비 토큰을
-많이 쓴다 (서브에이전트 다용 워크플로우는 수 배 소모 가능 — 추정, 실측으로
-교체 예정: /dev-kit:metrics). 내장된 완화 장치:
+많이 쓴다. v1.16.1부터 `/dev-kit:metrics`가 **토큰을 실측**한다 — 추정치가
+아니라 Claude Code 세션 로그에서 읽는다:
+- 출처: `~/.claude/projects/<프로젝트 경로 슬러그>/<세션>.jsonl`의 호출별
+  `usage`(input·cache_creation·cache_read·output)·시각·모델, `<세션>/subagents/
+  agent-*.jsonl` + `.meta.json`의 `agentType`(builder·builder-light·reviewer·
+  stage-reviewer), 세션당 `cost-state`(모델별 토큰 합·USD). 태스크의 `- 시작:`→
+  종료 시각 창으로 조인하고 에이전트 유형별로 분해한다.
+- **한계 (기기별 설정 필요)**: 로그는 기기마다 따로 쌓인다 — 회사 PC 프로젝트는
+  그 기기에서 집계한다. Claude Code는 로그를 **기본 30일 후 삭제**한다
+  (`cleanupPeriodDays` 미설정 시) — 보존하려면 **각 기기의** `~/.claude/settings.json`에
+  `"cleanupPeriodDays": 365`를 사용자가 직접 넣는다(dev-kit이 바꾸지 않는다).
+  로그 시각은 UTC라 metrics가 기기 시간대로 변환한다. 로그가 없는 태스크는
+  `n/a(로그 없음)`.
+- PROGRESS `- 비용:` 선택 행(호출 수·브리핑 자 수·대기·기록)은 오케스트레이터가
+  아는 값만 적고 토큰은 적지 않는다. 절감 조치는 측정이 쌓이고 v1.15·v1.16
+  판정이 끝난 뒤 v1.19에서.
+
+내장된 완화 장치:
 
 - PROGRESS.md 롤링 요약 — stage 종료 시 압축으로 stage-reviewer 입력 상수화
 - 자명한 소형 태스크는 오케스트레이터가 builder 없이 직접 처리

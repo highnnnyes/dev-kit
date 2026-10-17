@@ -8,7 +8,8 @@ Claude Code 플러그인 리포. 순수 마크다운 — 빌드·테스트·런�
 - 사용법·설치·튜닝·환경별 함정 → `README.md`
 - 서브에이전트 (builder / builder-light / reviewer / stage-reviewer) → `agents/`
 - 커맨드 (write-plan / execute-plan / metrics / migrate / journal) → `commands/`
-- 진단·설계·자체 결정 저널 (diagnosis-*.md / v1.N-design.md / journal.md / portfolio.md) → `docs/`
+- 진단·설계·자체 결정 저널·외부 검토·로드맵 (diagnosis-*.md / v1.N-design.md / journal.md / portfolio.md / review-*.md / roadmap-*.md) → `docs/`
+- 훅 (block-destructive.sh + 입력→기대 테스트 test-block-destructive.sh — 훅을 고치면 테스트 실행) → `hooks/`
 - 스킬 (brainstorming / grill / docs / debugging / audit / _template) → `skills/`
 - 버전별 변경 이력 → `CHANGELOG.md`
 
